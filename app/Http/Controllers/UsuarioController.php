@@ -35,4 +35,22 @@ final class UsuarioController extends BaseController {
         $id=$this->createUser($b,$b['role']); Http::json(['id'=>$id],201);
     
     }
+    public function eliminarUsuario(array $params=[]): void {
+        $actor=Auth::roles('administrador');
+        $id=(int)($params[1]??0);
+        if($id<1)Http::fail('ID de usuario inválido.',422);
+        $result=(new \App\Services\ServicioUsuarios($this->db))->cambiarActivo($id,false,(int)$actor['id']);
+        if($result['status']==='not_found')Http::fail('Usuario no encontrado.',404);
+        if($result['status']==='self')Http::fail('No puedes eliminar tu propia cuenta.',409);
+        if($result['status']==='last_admin')Http::fail('No se puede eliminar el último administrador activo.',409);
+        Http::json(['ok'=>true,'message'=>'Usuario desactivado. Sus citas e historial se conservaron para auditoría.']);
+    }
+    public function restaurarUsuario(array $params=[]): void {
+        $actor=Auth::roles('administrador');
+        $id=(int)($params[1]??0);
+        if($id<1)Http::fail('ID de usuario inválido.',422);
+        $result=(new \App\Services\ServicioUsuarios($this->db))->cambiarActivo($id,true,(int)$actor['id']);
+        if($result['status']==='not_found')Http::fail('Usuario no encontrado.',404);
+        Http::json(['ok'=>true,'message'=>'Cuenta reactivada correctamente.']);
+    }
 }

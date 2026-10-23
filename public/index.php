@@ -26,8 +26,8 @@ session_set_cookie_params([
 session_start();
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-if (!in_array($method, ['GET','POST','PATCH'], true)) { Http::fail('Método no permitido', 405); }
-if ($method !== 'GET' && $path !== '/api/auth/login') { Auth::checkCsrf(); }
+if (!in_array($method, ['GET','POST','PATCH','DELETE'], true)) { Http::fail('Método no permitido', 405); }
+if ($method !== 'GET' && !in_array($path, ['/api/auth/login', '/api/auth/forgot-password', '/api/auth/reset-password'], true)) { Auth::checkCsrf(); }
 try {
     $db = Database::connect();
     (new Router($db, new NotificadorEnSistema($db)))->dispatch($path,$method);

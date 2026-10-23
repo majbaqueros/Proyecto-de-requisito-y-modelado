@@ -29,9 +29,18 @@ final class Auth {
             'id' => (int) $dbUser['id'],
             'name' => $dbUser['name'],
             'email' => $dbUser['email'],
-            'role' => $dbUser['role']
+            'role' => $dbUser['role'],
+            'session_version' => (int)($dbUser['session_version']??1)
         ];
         $_SESSION['csrf'] = bin2hex(random_bytes(32));
+    }
+    public static function verifySession(\PDO $db): void {
+        $user=self::user();if(!$user)return;
+        $s=$db->prepare('SELECT active,session_version FROM users WHERE id=?');
+        $s->execute([(int)$user['id']]);$current=$s->fetch(\PDO::FETCH_ASSOC);
+        if(!$current || !in_array($current['active'],[true,1,'1','t'],true) || (int)$current['session_version']!==(int)($user['session_version']??0)){
+            unset($_SESSION['user']);
+        }
     }
     public static function logout(): void {
         $_SESSION = [];

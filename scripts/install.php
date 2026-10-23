@@ -3,8 +3,45 @@ declare(strict_types=1);
 require_once dirname(__DIR__).'/app/Core/Autoload.php';
 use App\Core\Database;
 
+// La clave se guarda en un volumen Docker privado cuando APP_KEY_FILE está configurada.
+// Se conserva la clave anterior si ya existe en storage/app.key, sin rotarla.
+$projectRoot=dirname(__DIR__);
+$legacyKeyFile=$projectRoot.'/storage/app.key';
+$secretPath=trim((string)(getenv('APP_KEY_FILE') ?: ''));
+if ($secretPath==='') $secretPath=$legacyKeyFile;
+$secretDirectory=dirname($secretPath);
+if(!is_dir($secretDirectory) && !mkdir($secretDirectory,0750,true) && !is_dir($secretDirectory)){
+    throw new RuntimeException('No se pudo crear el directorio de claves.');
+}
+if(!is_file($secretPath)){
+    $keyToSave=null;
+    if($secretPath!==$legacyKeyFile && is_file($legacyKeyFile)){
+        // El instalador se ejecuta como root: puede importar la clave anterior
+        // incluso si el servidor web no podía leerla en el montaje de Windows.
+        $previous=@file_get_contents($legacyKeyFile);
+        if($previous===false || strlen(trim($previous))<32){
+            throw new RuntimeException('La clave anterior existe pero no se puede importar. No se generó una clave nueva para evitar perder los códigos vigentes.');
+        }
+        $keyToSave=trim($previous);
+    }
+    $keyToSave ??= bin2hex(random_bytes(32));
+    if(file_put_contents($secretPath,$keyToSave,LOCK_EX)===false){
+        throw new RuntimeException('No se pudo guardar la clave de recuperación.');
+    }
+}
+// En un volumen Docker de Linux los permisos 0750/0640 y el grupo www-data
+// funcionan de forma estable, a diferencia de algunos bind mounts en Windows.
+if (!chgrp($secretDirectory,'www-data') || !chmod($secretDirectory,0750)
+    || !chgrp($secretPath,'www-data') || !chmod($secretPath,0640)) {
+    throw new RuntimeException('No se pudieron ajustar los permisos de la clave (grupo www-data).');
+}
+$loadedKey=@file_get_contents($secretPath);
+if($loadedKey===false || strlen(trim($loadedKey))<32){
+    throw new RuntimeException('La clave de recuperación falta o es inválida.');
+}
 $db = Database::connect();
 $db->exec(file_get_contents(dirname(__DIR__).'/database/schema.sql'));
+$db->exec(file_get_contents(dirname(__DIR__).'/database/migrations/005_security.sql'));
 function addUser(PDO $db, string $name, string $email, string $password, string $role): int {
     $stmt = $db->prepare('SELECT id FROM users WHERE email=?');
     $stmt->execute([$email]); $id=$stmt->fetchColumn();

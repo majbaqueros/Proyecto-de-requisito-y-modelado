@@ -67,3 +67,21 @@ body{font-family:'DM Sans',system-ui,-apple-system,sans-serif;background:var(--c
 @media(max-width:770px){.sidebar-glow{display:none}.quick-search{padding:9px 11px}.quick-search span{display:none}.topbar .hello{font-size:.53rem}.stat-chip{display:none}.banner::after{display:none}.login-topline{margin-bottom:15px}}
 @media(max-width:480px){.stat-card{padding:14px}.stat-card .stat-mini{margin-bottom:3px}.login-panel h2{font-size:1.9rem}.topbar-right{gap:4px}.topbar-leading{gap:8px}.role-card strong{font-size:.76rem}.role-card small{font-size:.67rem}.list-toolbar{flex-direction:column;align-items:stretch}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* V4: enlaces de navegación con direcciones propias; botones para gestión de horarios */
+.nav-menu a.nav-link{color:#adc1d1;text-decoration:none;cursor:pointer}
+.nav-menu a.nav-link:hover{color:#fff}
+.nav-menu a.nav-link.active{color:#c3fff2}
+.schedule-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:95px}
+.schedule-actions button:disabled{opacity:.4;cursor:not-allowed;filter:grayscale(.35)}
+.schedule-blocked{font-size:.7rem;line-height:1.3;color:var(--muted);max-width:120px}
+.schedule-guidance{padding:12px 14px;border:1px solid #d6ebe7;background:#f0faf7;color:#356860;font-size:.81rem;line-height:1.55;border-radius:11px;margin:0 0 18px}
+[data-theme="dark"] .schedule-guidance{background:#173b3c;border-color:#31615f;color:#c7f0e4}
+/* V5: módulos independientes de cuentas, recuperación y auditoría */
+.forgot-row {display:flex;justify-content:flex-end;margin:-4px 0 14px}
+.forgot-row .text-link{font-size:.88rem}
+.audit-detail{min-width:100px}
+.audit-detail summary{cursor:pointer;color:var(--teal,#008d88);font-weight:700;white-space:nowrap}
+.audit-columns{display:grid;grid-template-columns:repeat(2,minmax(180px,1fr));gap:12px;margin-top:12px}
+.audit-columns pre{font-size:.72rem;max-width:360px;max-height:240px;overflow:auto;padding:12px;border-radius:10px;background:rgba(100,116,139,.09);white-space:pre-wrap;overflow-wrap:anywhere}
+@media(max-width:720px){.audit-columns{grid-template-columns:1fr}}

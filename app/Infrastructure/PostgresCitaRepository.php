@@ -9,13 +9,12 @@ final class PostgresCitaRepository implements CitaRepositoryInterface {
     public function __construct(private PDO $db) {}
     public function disponible(Cita $cita): bool {
         $sql = <<<'SQL'
-            SELECT EXISTS (
-                SELECT 1 FROM schedules s
-                WHERE s.doctor_id = :doctor
-                  AND s.weekday = EXTRACT(DOW FROM CAST(:fecha AS timestamp))
-                  AND CAST(:hora AS time) >= s.start_time
-                  AND CAST(:hora AS time) + INTERVAL '30 minutes' <= s.end_time
-            ) AS horario
+            SELECT s.id FROM schedules s
+            WHERE s.doctor_id = :doctor
+              AND s.weekday = EXTRACT(DOW FROM CAST(:fecha AS timestamp))
+              AND CAST(:hora AS time) >= s.start_time
+              AND CAST(:hora AS time) + INTERVAL '30 minutes' <= s.end_time
+            FOR SHARE
         SQL;
         $p = $this->db->prepare($sql);
         $p->execute([

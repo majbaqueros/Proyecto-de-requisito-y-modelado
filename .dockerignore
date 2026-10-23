@@ -1,0 +1,5 @@
+.env
+storage/app.key
+.git
+.vscode
+*.zip

@@ -28,7 +28,11 @@ final class CitaController extends BaseController {
         $model=new Cita($pid,(int)$b['doctor_id'],$date,trim((string)$b['reason']),$this->user['id']);
         $repo=new PostgresCitaRepository($this->db);
         $gestor=new GestorCitas($repo,$this->notifier,new ValidadorDisponibilidad($repo));
-        Http::json($gestor->agendar($model,(int)$profile['user_id']),201);
+        // Una transacción conserva el bloqueo FOR SHARE del horario hasta guardar la cita.
+        $this->db->beginTransaction();
+        $result=$gestor->agendar($model,(int)$profile['user_id']);
+        $this->db->commit();
+        Http::json($result,201);
     
     }
     public function cambiarEstado(array $params = []): void {

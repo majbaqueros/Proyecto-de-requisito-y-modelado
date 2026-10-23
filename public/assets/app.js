@@ -11,7 +11,7 @@ const roles = {
   administrador:{label:'Administrador',emoji:'🛡️',description:'Configuración de la clínica'}
 };
 // Cada rol puede abrirse con una URL propia: /paciente, /medico, etc.
-const urlRole = location.pathname.replace(/^\//, '').replace(/\/$/, '');
+const urlRole = location.pathname.split('/').filter(Boolean)[0]?.toLowerCase() || '';
 if (Object.prototype.hasOwnProperty.call(roles, urlRole)) state.role = urlRole;
 const demo = {
   paciente:['paciente@clinica.local','Paciente123*'],
@@ -22,14 +22,31 @@ const demo = {
 const sections = {
   dashboard:['📊','Resumen'], appointments:['📅','Citas médicas'], doctors:['👨‍⚕️','Médicos'],
   patients:['👥','Pacientes'], records:['🗂️','Historias clínicas'], invoices:['🧾','Facturación'],
-  schedules:['🕘','Horarios'], specialties:['⚕️','Especialidades'],users:['🔐','Usuarios'],notifications:['🔔','Notificaciones']
+  schedules:['🕘','Horarios'], specialties:['⚕️','Especialidades'],users:['🔐','Usuarios'],audit:['📜','Bitácora'],notifications:['🔔','Notificaciones']
 };
 const navByRole = {
   paciente:['dashboard','appointments','doctors','records','invoices','notifications'],
   recepcionista:['dashboard','appointments','patients','doctors','invoices','notifications'],
   medico:['dashboard','appointments','records','doctors','notifications'],
-  administrador:['dashboard','appointments','patients','doctors','schedules','specialties','invoices','users','notifications']
+  administrador:['dashboard','appointments','patients','doctors','schedules','specialties','invoices','users','audit','notifications']
 };
+// Rutas reales del navegador, independientes para cada módulo y perfil.
+// Todas comparten la plantilla HTML, pero cada URL es accesible directamente y
+// el backend sigue protegiendo todas las operaciones con roles y sesión.
+const slugs={dashboard:'',appointments:'citas',doctors:'medicos',patients:'pacientes',records:'historias-clinicas',invoices:'facturacion',schedules:'horarios',specialties:'especialidades',users:'usuarios',audit:'bitacora',notifications:'notificaciones'};
+function pageUrl(role,view='dashboard'){
+  return `/${role}${slugs[view]?'/'+slugs[view]:''}`;
+}
+function parsePageUrl(path=location.pathname){
+  const parts=path.split('/').filter(Boolean).map(p=>p.toLowerCase());
+  const role=roles[parts[0]]?parts[0]:null;
+  const view=parts.length<=1?'dashboard':(Object.keys(slugs).find(k=>slugs[k]===parts[1])||null);
+  return {role,view,valid:!!role && parts.length<=2 && !!view};
+}
+function syncPageUrl(role,view,replace=false){
+  const href=pageUrl(role,view);
+  if(location.pathname!==href){history[replace?'replaceState':'pushState']({},'',href);}
+}
 const days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 const escapeHtml = value => String(value??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money = n => 'Bs '+Number(n||0).toFixed(2);
@@ -48,7 +65,7 @@ const form = (action,fields,submit='Guardar') => `<form data-form="${action}"><d
 async function api(url,options={}) {
   const cfg={method:options.method||'GET',headers:{'Accept':'application/json'},credentials:'same-origin'};
   if (options.body!==undefined){ cfg.headers['Content-Type']='application/json'; cfg.body=JSON.stringify(options.body); }
-  if (cfg.method!=='GET'&&url!=='/api/auth/login') cfg.headers['X-CSRF-Token']=state.csrf||'';
+  if (cfg.method!=='GET'&&!['/api/auth/login','/api/auth/forgot-password','/api/auth/reset-password'].includes(url)) cfg.headers['X-CSRF-Token']=state.csrf||'';
   let response;
   try{response=await fetch(url,cfg);}catch{throw new Error('No se puede conectar al servidor. ¿Están funcionando PHP y PostgreSQL?');}
   const data=await response.json().catch(()=>({error:'Respuesta no válida del servidor.'}));
@@ -63,7 +80,15 @@ function flash(text,error=false){toast.textContent=text;toast.className='toast s
 function loginScreen(){
   const role=roles[state.role];
   app.innerHTML=`<div class="login-layout"><aside class="login-art"><div class="brand"><div class="brandmark">✚</div>SaludCita</div><div class="login-copy"><div class="eyebrow">PROYECTO UNIVERSITARIO · SALUD DIGITAL</div><h1>Una mejor forma de cuidar cada cita.</h1><p>Un sistema completo de gestión de citas médicas, con acceso seguro por roles y componentes independientes construidos con principios SOLID.</p><div class="feature"><b>✓</b>Agenda y disponibilidad médica</div><div class="feature"><b>✓</b>Consultas e historias clínicas</div><div class="feature"><b>✓</b>Facturación y notificaciones</div></div><div class="login-foot"><span class="live-dot"></span> Arquitectura modular · Ingeniería de Requisitos · SOLID</div></aside>
-  <main class="login-right"><div class="login-panel"><div class="login-topline"><span class="secure-mark">● SISTEMA CLÍNICO · DEMOSTRACIÓN</span><button type="button" class="mode-toggle" data-theme-toggle aria-label="Cambiar modo de visualización">◐ <span>Modo</span></button></div><div class="eyebrow">ACCESO AL SISTEMA</div><h2>Bienvenido/a</h2><p class="sub">Selecciona tu perfil e inicia sesión para entrar a tu espacio de trabajo.</p><div class="role-choices">${Object.entries(roles).map(([id,r])=>`<button class="role-card ${id===state.role?'active':''}" type="button" data-role="${id}"><span class="ico">${r.emoji}</span><span><strong>${r.label}</strong><small>${r.description}</small></span></button>`).join('')}</div><form data-form="login"><div class="field"><label for="login-email">Correo electrónico</label><input id="login-email" name="email" type="email" placeholder="nombre@clinica.com" autocomplete="username" required></div><div class="field"><label for="login-password">Contraseña</label><input id="login-password" name="password" type="password" placeholder="••••••••" autocomplete="current-password" required><button type="button" class="show-password" data-show-password aria-label="Mostrar u ocultar contraseña">Mostrar</button></div><button type="submit" class="primary full">Entrar como ${role.label} →</button></form>${state.role==='paciente'?`<div class="register-prompt">¿Es tu primera vez? <button type="button" class="text-link" data-show-register>Crear cuenta de paciente</button></div>`:''}<div class="demo-box"><div class="demo-title">🔑 Acceso de demostración</div><p>Las credenciales son únicamente para pruebas locales. No usar en producción.</p><div class="demo-row"><code>${escapeHtml(demo[state.role][0])}</code><button type="button" class="secondary small" data-demo>Usar demo</button></div></div></div></main></div>`;
+  <main class="login-right"><div class="login-panel"><div class="login-topline"><span class="secure-mark">● SISTEMA CLÍNICO · DEMOSTRACIÓN</span><button type="button" class="mode-toggle" data-theme-toggle aria-label="Cambiar modo de visualización">◐ <span>Modo</span></button></div><div class="eyebrow">ACCESO AL SISTEMA</div><h2>Bienvenido/a</h2><p class="sub">Selecciona tu perfil e inicia sesión para entrar a tu espacio de trabajo.</p><div class="role-choices">${Object.entries(roles).map(([id,r])=>`<button class="role-card ${id===state.role?'active':''}" type="button" data-role="${id}"><span class="ico">${r.emoji}</span><span><strong>${r.label}</strong><small>${r.description}</small></span></button>`).join('')}</div><form data-form="login"><div class="field"><label for="login-email">Correo electrónico</label><input id="login-email" name="email" type="email" placeholder="nombre@clinica.com" autocomplete="username" required></div><div class="field"><label for="login-password">Contraseña</label><input id="login-password" name="password" type="password" placeholder="••••••••" autocomplete="current-password" required><button type="button" class="show-password" data-show-password aria-label="Mostrar u ocultar contraseña">Mostrar</button></div><div class="forgot-row"><button type="button" class="text-link" data-forgot>¿Olvidaste tu contraseña?</button></div><button type="submit" class="primary full">Entrar como ${role.label} →</button></form>${state.role==='paciente'?`<div class="register-prompt">¿Es tu primera vez? <button type="button" class="text-link" data-show-register>Crear cuenta de paciente</button></div>`:''}<div class="demo-box"><div class="demo-title">🔑 Acceso de demostración</div><p>Las credenciales son únicamente para pruebas locales. No usar en producción.</p><div class="demo-row"><code>${escapeHtml(demo[state.role][0])}</code><button type="button" class="secondary small" data-demo>Usar demo</button></div></div></div></main></div>`;
+}
+function recoveryScreen(stage='request',email=''){
+  history.replaceState({},'','/recuperar-clave');
+  const step=stage==='request';
+  const inner=step
+    ? `<div class="eyebrow">SEGURIDAD DE CUENTA</div><h2>Recuperar contraseña</h2><p class="sub">Te enviaremos un código de seis dígitos al correo registrado. Expira en 10 minutos.</p><form data-form="forgot"><div class="field"><label>Correo electrónico</label><input name="email" type="email" value="${escapeHtml(email)}" autocomplete="email" required></div><button class="primary full" type="submit">Enviar código por correo</button></form>`
+    : `<div class="eyebrow">SEGURIDAD DE CUENTA</div><h2>Escribe el código</h2><p class="sub">Consulta tu correo e introduce el código recibido. Para pruebas locales: <a href="http://localhost:8025" target="_blank" rel="noopener noreferrer">buzón Mailpit (puerto 8025)</a>.</p><form data-form="reset"><div class="field"><label>Correo electrónico</label><input name="email" type="email" autocomplete="email" value="${escapeHtml(email)}" required></div><div class="field"><label>Código de seis dígitos</label><input name="code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></div><div class="field"><label>Nueva contraseña (mínimo 8 caracteres)</label><input name="password" type="password" minlength="8" maxlength="200" autocomplete="new-password" required></div><button class="primary full" type="submit">Restablecer contraseña</button></form><div class="register-prompt"><button class="text-link" type="button" data-forgot>Solicitar otro código</button></div>`;
+  app.innerHTML=`<div class="login-layout"><aside class="login-art"><div class="brand"><div class="brandmark">✚</div>SaludCita</div><div class="login-copy"><span class="eyebrow">PROTECCIÓN DE CUENTAS</span><h1>Recupera tu acceso de forma segura.</h1><p>Los códigos son temporales, de uso único y nunca se muestran en el registro de cambios.</p></div><div class="login-foot"><span class="live-dot"></span> Recuperación segura de credenciales</div></aside><main class="login-right"><div class="login-panel">${inner}<div class="register-prompt"><button type="button" class="text-link" data-back-login>← Volver al inicio de sesión</button></div></div></main></div>`;
 }
 function registerScreen() {
   state.role='paciente';history.replaceState({},'','/paciente');
@@ -94,14 +119,16 @@ async function refreshBell() {
 function shell(){
   const r=roles[state.user.role];
   const nav=navByRole[state.user.role];
-  app.innerHTML=`<div class="layout"><aside class="sidebar"><div class="sidebar-glow"></div><div class="brand"><div class="brandmark">✚</div>SaludCita</div><div class="sidebar-label">ÁREA DE TRABAJO</div><nav class="nav-menu" aria-label="Navegación">${nav.map(k=>`<button class="nav-link ${k===state.view?'active':''}" data-view="${k}"><span class="ico">${sections[k][0]}</span>${sections[k][1]}</button>`).join('')}</nav><div class="sidebar-bottom"><div class="avatar">${escapeHtml(state.user.name.charAt(0).toUpperCase())}</div><div><strong>${escapeHtml(state.user.name)}</strong><span>${r.label}</span></div></div><button class="sidebar-logout" data-logout>↪ Cerrar sesión</button></aside><div class="content-wrap"><header class="topbar"><div class="topbar-leading"><span class="topbar-brand-dot"></span><div><span class="hello">PORTAL SALUDCITA · ${r.label.toUpperCase()}</span><br><strong>${escapeHtml(state.user.name)}</strong></div></div><div class="topbar-right"><button type="button" class="quick-search" data-open-search title="Buscar sección (Ctrl+K)">⌕ <span>Buscar sección</span> <kbd>Ctrl K</kbd></button><button type="button" class="mode-toggle" data-theme-toggle aria-label="Cambiar modo de visualización">◐</button><div class="notif-host"><button type="button" class="ghost small bell-button" data-bell title="Notificaciones" aria-label="Abrir notificaciones">🔔 <span id="unread-count" class="unread-count" hidden></span></button><div id="notifier-popover" class="notification-popover" hidden></div></div><span class="role-pill">${r.emoji} ${r.label}</span><button class="ghost small" data-logout title="Salir">Salir ↗</button></div></header><main class="page" id="page"><div class="boot" style="height:50vh"><div class="spinner"></div></div></main></div></div>`;
+  app.innerHTML=`<div class="layout"><aside class="sidebar"><div class="sidebar-glow"></div><div class="brand"><div class="brandmark">✚</div>SaludCita</div><div class="sidebar-label">ÁREA DE TRABAJO</div><nav class="nav-menu" aria-label="Navegación">${nav.map(k=>`<a href="${pageUrl(state.user.role,k)}" class="nav-link ${k===state.view?'active':''}" ${k===state.view?'aria-current="page"':''} data-view="${k}"><span class="ico">${sections[k][0]}</span>${sections[k][1]}</a>`).join('')}</nav><div class="sidebar-bottom"><div class="avatar">${escapeHtml(state.user.name.charAt(0).toUpperCase())}</div><div><strong>${escapeHtml(state.user.name)}</strong><span>${r.label}</span></div></div><button class="sidebar-logout" data-logout>↪ Cerrar sesión</button></aside><div class="content-wrap"><header class="topbar"><div class="topbar-leading"><span class="topbar-brand-dot"></span><div><span class="hello">PORTAL SALUDCITA · ${r.label.toUpperCase()}</span><br><strong>${escapeHtml(state.user.name)}</strong></div></div><div class="topbar-right"><button type="button" class="quick-search" data-open-search title="Buscar sección (Ctrl+K)">⌕ <span>Buscar sección</span> <kbd>Ctrl K</kbd></button><button type="button" class="mode-toggle" data-theme-toggle aria-label="Cambiar modo de visualización">◐</button><div class="notif-host"><button type="button" class="ghost small bell-button" data-bell title="Notificaciones" aria-label="Abrir notificaciones">🔔 <span id="unread-count" class="unread-count" hidden></span></button><div id="notifier-popover" class="notification-popover" hidden></div></div><span class="role-pill">${r.emoji} ${r.label}</span><button class="ghost small" data-logout title="Salir">Salir ↗</button></div></header><main class="page" id="page"><div class="boot" style="height:50vh"><div class="spinner"></div></div></main></div></div>`;
 }
-async function go(view){
-  if(!navByRole[state.user.role].includes(view)) return;
-  state.view=view; shell();
+async function go(view,{fromHistory=false,replace=false}={}){
+  if(!state.user || !navByRole[state.user.role].includes(view)) return;
+  state.view=view;
+  if(!fromHistory)syncPageUrl(state.user.role,view,replace);
+  shell();
   const target=document.getElementById('page');
   try{
-    const views={dashboard:dashboardView,appointments:appointmentsView,doctors:doctorsView,patients:patientsView,records:recordsView,invoices:invoicesView,schedules:schedulesView,specialties:specialtiesView,users:usersView,notifications:notificationsView};
+    const views={dashboard:dashboardView,appointments:appointmentsView,doctors:doctorsView,patients:patientsView,records:recordsView,invoices:invoicesView,schedules:schedulesView,specialties:specialtiesView,users:usersView,audit:auditView,notifications:notificationsView};
     const html=await views[view]();
     if(state.view===view&&document.getElementById('page')===target){ target.innerHTML=html; enhanceView(target); refreshBell(); }
   }catch(e){if(document.getElementById('page')===target){target.innerHTML=panel('No se pudo cargar',`<p>${escapeHtml(e.message)}</p><button class="secondary" data-view="${view}">Reintentar</button>`);flash(e.message,true);}}
@@ -162,8 +189,17 @@ async function schedulesView(){
   const [docs,items]=await Promise.all([api('/api/doctors'),api('/api/schedules')]);
   const left=panel('Crear horario',form('schedule',select('Médico','doctor_id',opts(docs))+select('Día de la semana','weekday',days.map((d,i)=>({value:i,label:d})))+
     input('Desde','start_time','time')+input('Hasta','end_time','time'),'Guardar horario'));
-  const rows=items.map(s=>`<tr><td class="name">${escapeHtml(s.doctor_name)}</td><td>${days[Number(s.weekday)]}</td><td>${String(s.start_time).slice(0,5)}</td><td>${String(s.end_time).slice(0,5)}</td></tr>`);
-  return head('Horarios médicos','Configura la disponibilidad semanal de cada médico.')+`<div class="split"><div>${left}</div>${panel('Horarios actuales',table(['Médico','Día','Inicio','Fin'],rows))}</div>`;
+  const rows=items.map(s=>{
+    const count=Number(s.future_appointments||0);
+    const doctor=escapeHtml(s.doctor_name);
+    const label=escapeHtml(`${s.doctor_name} · ${days[Number(s.weekday)]} de ${String(s.start_time).slice(0,5)} a ${String(s.end_time).slice(0,5)}`);
+    const action=count>0
+      ? `<button class="danger small" disabled title="Hay ${count} cita(s) futura(s) activa(s)">Eliminar</button><small class="schedule-blocked">${count} cita(s) activa(s)</small>`
+      : `<button type="button" class="danger small" data-remove-schedule="${Number(s.id)}" data-schedule-label="${label}" aria-label="Eliminar horario de ${label}">Eliminar</button>`;
+    return `<tr><td class="name">${doctor}</td><td>${days[Number(s.weekday)]}</td><td>${String(s.start_time).slice(0,5)}</td><td>${String(s.end_time).slice(0,5)}</td><td><div class="schedule-actions">${action}</div></td></tr>`;
+  });
+  const note=`<p class="schedule-guidance">🛡️ Los horarios con citas futuras pendientes o confirmadas no pueden eliminarse. Cancela o reprograma esas citas antes de eliminar su franja.</p>`;
+  return head('Horarios médicos','Crea franjas de atención y elimina las que ya no necesites.')+`<div class="split"><div>${left}</div>${panel(`Horarios registrados · ${items.length}`,note+table(['Médico','Día','Inicio','Fin','Acciones'],rows))}</div>`;
 }
 async function specialtiesView(){
   const items=await api('/api/specialties');
@@ -197,8 +233,21 @@ async function usersView(){
   const users=await api('/api/users');
   const left=panel('Crear personal administrativo',form('user',input('Nombre completo','name')+input('Correo','email','email')+input('Contraseña inicial','password','password')+
     select('Rol','role',[{value:'recepcionista',label:'Recepcionista'},{value:'administrador',label:'Administrador'}])+input('Teléfono','phone','tel',{required:false}),'Crear usuario'));
-  const rows=users.map(u=>`<tr><td class="name">${escapeHtml(u.name)}</td><td>${escapeHtml(u.email)}</td><td>${badge(u.role)}</td><td>${u.active?'Activo':'Inactivo'}</td></tr>`);
-  return head('Usuarios y acceso','Administración de cuentas y perfiles separados.')+`<div class="split"><div>${left}</div>${panel('Usuarios registrados',table(['Nombre','Correo','Rol','Estado'],rows))}</div>`;
+  const rows=users.map(u=>{
+    const button=Number(u.id)===state.user.id ? '<small>Tu cuenta</small>' : u.active
+      ? `<button class="danger small" data-disable-user="${Number(u.id)}" data-user-name="${escapeHtml(u.name)}">Eliminar</button>`
+      : `<button class="secondary small" data-restore-user="${Number(u.id)}">Reactivar</button>`;
+    return `<tr><td class="name">${escapeHtml(u.name)}</td><td>${escapeHtml(u.email)}</td><td>${badge(u.role)}</td><td>${u.active?'Activo':'Desactivado'}</td><td>${button}</td></tr>`;
+  });
+  return head('Usuarios y acceso','Elimina accesos sin destruir citas, facturas ni historias clínicas. Los cambios quedan en la bitácora.')+`<div class="split"><div>${left}</div>${panel('Usuarios registrados',table(['Nombre','Correo','Rol','Estado','Acciones'],rows))}</div>`;
+}
+async function auditView(){
+  const logs=await api('/api/audit?limit=100');
+  const rows=logs.map(log=>{
+    const details=`<details class="audit-detail"><summary>Ver cambios</summary><div class="audit-columns"><div><b>Antes</b><pre>${escapeHtml(JSON.stringify(log.previous_data,null,2)||'—')}</pre></div><div><b>Después</b><pre>${escapeHtml(JSON.stringify(log.new_data,null,2)||'—')}</pre></div></div></details>`;
+    return `<tr><td class="name">#${Number(log.id)}</td><td>${fmtDate(log.occurred_at)}</td><td>${escapeHtml(log.actor_user_id||log.db_user||'—')}</td><td>${escapeHtml(log.source)}</td><td>${escapeHtml(log.table_name)}</td><td>${escapeHtml(log.operation)}</td><td>${details}</td></tr>`;
+  });
+  return head('Bitácora de cambios','Auditoría registrada por PostgreSQL; también detecta modificaciones realizadas desde la terminal.')+panel(`Últimos ${logs.length} eventos`, `<p class="sub">Las claves, los códigos de recuperación y las notas clínicas confidenciales no se incluyen en estos registros.</p>`+table(['ID','Fecha','Actor','Origen','Tabla','Acción','Detalle'],rows));
 }
 async function notificationsView(){
   const notices=await api('/api/notifications');
@@ -207,6 +256,10 @@ async function notificationsView(){
 }
 
 app.addEventListener('click',async e=>{
+  const link=e.target.closest('a[data-view]');
+  if(link && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey && e.button===0){
+    e.preventDefault(); if(!state.busy)await go(link.dataset.view);return;
+  }
   const button=e.target.closest('button');
   if(!button || button.disabled || state.busy)return;
   if(button.hasAttribute('data-show-password')){const field=document.getElementById('login-password');if(field){field.type=field.type==='password'?'text':'password';button.textContent=field.type==='password'?'Mostrar':'Ocultar';}return;}
@@ -214,8 +267,9 @@ app.addEventListener('click',async e=>{
   if(button.hasAttribute('data-open-search')){openCommandPalette();return;}
   if(button.hasAttribute('data-command-close')){document.getElementById('command-backdrop')?.remove();return;}
   if(button.hasAttribute('data-command-view')){document.getElementById('command-backdrop')?.remove();await go(button.dataset.commandView);return;}
+  if(button.hasAttribute('data-forgot')){recoveryScreen('request',document.querySelector('[name=email]')?.value||'');return;}
   if(button.hasAttribute('data-show-register')){registerScreen();return;}
-  if(button.hasAttribute('data-back-login')){history.replaceState({},'','/paciente');loginScreen();return;}
+  if(button.hasAttribute('data-back-login')){history.replaceState({},'',`/${state.role}`);loginScreen();return;}
   if(button.hasAttribute('data-bell')){await toggleNotifications();return;}
   if(button.hasAttribute('data-role')){state.role=button.dataset.role;history.replaceState({},'',`/${state.role}`);loginScreen();return;}
   if(button.hasAttribute('data-demo')){
@@ -226,8 +280,37 @@ app.addEventListener('click',async e=>{
   if(button.hasAttribute('data-view')){await go(button.dataset.view);return;}
   if(button.hasAttribute('data-logout')){
     state.busy=true;
-    try{await api('/api/auth/logout',{method:'POST'});state.user=null;state.csrf=null;const guest=await api('/api/auth/me');state.csrf=guest.csrf;loginScreen();}
+    try{await api('/api/auth/logout',{method:'POST'});state.role=state.user.role;state.user=null;state.csrf=null;history.replaceState({},'',`/${state.role}`);const guest=await api('/api/auth/me');state.csrf=guest.csrf;loginScreen();}
     catch(err){flash(err.message,true)}finally{state.busy=false}return;
+  }
+  if(button.hasAttribute('data-disable-user')||button.hasAttribute('data-restore-user')){
+    if(state.user?.role!=='administrador')return;
+    const deactivate=button.hasAttribute('data-disable-user');
+    const userId=Number(deactivate?button.dataset.disableUser:button.dataset.restoreUser);
+    if(!Number.isSafeInteger(userId)||userId<1)return;
+    if(deactivate&&!window.confirm(`¿Desactivar el acceso de ${button.dataset.userName}?\n\nSus citas, facturas e historial se conservarán para auditoría.`))return;
+    state.busy=true;button.disabled=true;
+    try{
+      const url=`/api/users/${userId}${deactivate?'':'/restore'}`;
+      const result=await api(url,{method:deactivate?'DELETE':'PATCH'});
+      flash(result.message);await go('users');
+    }catch(err){flash(err.message,true);button.disabled=false;}
+    finally{state.busy=false;}
+    return;
+  }
+  if(button.hasAttribute('data-remove-schedule')){
+    if(state.user?.role!=='administrador'){flash('Solo el administrador puede eliminar horarios.',true);return;}
+    const scheduleId=Number(button.dataset.removeSchedule);
+    if(!Number.isSafeInteger(scheduleId)||scheduleId<1)return;
+    if(!window.confirm(`¿Eliminar el horario ${button.dataset.scheduleLabel}?\n\nEsta operación no se puede deshacer.`))return;
+    state.busy=true;button.disabled=true;
+    try{
+      const result=await api(`/api/schedules/${scheduleId}`,{method:'DELETE'});
+      flash(result.message||'Horario eliminado correctamente.');
+      await go('schedules');
+    }catch(err){flash(err.message,true);button.disabled=false;}
+    finally{state.busy=false;}
+    return;
   }
   const id=Number(button.dataset.id||button.dataset.pay||button.dataset.read);
   let url='', status='';
@@ -248,17 +331,21 @@ app.addEventListener('submit',async e=>{
   e.preventDefault();if(state.busy)return;
   const action=target.dataset.form;
   const values=Object.fromEntries(new FormData(target).entries());
-  const endpoints={register:'/api/auth/register',login:'/api/auth/login',appointment:'/api/appointments',patient:'/api/patients',doctor:'/api/doctors',schedule:'/api/schedules',specialty:'/api/specialties',record:'/api/records',invoice:'/api/invoices',user:'/api/users'};
+  const endpoints={forgot:'/api/auth/forgot-password',reset:'/api/auth/reset-password',register:'/api/auth/register',login:'/api/auth/login',appointment:'/api/appointments',patient:'/api/patients',doctor:'/api/doctors',schedule:'/api/schedules',specialty:'/api/specialties',record:'/api/records',invoice:'/api/invoices',user:'/api/users'};
   if(action==='login')values.role=state.role;
   if(!endpoints[action])return;
   state.busy=true;
   const button=target.querySelector('button[type="submit"]');if(button)button.disabled=true;
   try{
     const result=await api(endpoints[action],{method:'POST',body:values});
-    if(action==='register'){flash('Cuenta registrada. Ahora inicia sesión como Paciente.');loginScreen();}
+    if(action==='forgot'){flash(result.message);recoveryScreen('verify',values.email);}
+    else if(action==='reset'){flash(result.message);history.replaceState({},'',`/${state.role}`);loginScreen();}
+    else if(action==='register'){flash('Cuenta registrada. Ahora inicia sesión como Paciente.');loginScreen();}
     else if(action==='login'){
-      state.user=result.user;state.csrf=result.csrf;state.view='dashboard';
-      flash('Sesión iniciada correctamente.');await go('dashboard');
+      state.user=result.user;state.csrf=result.csrf;
+      const route=parsePageUrl();
+      const destination=route.role===state.user.role && navByRole[state.user.role].includes(route.view)?route.view:'dashboard';
+      flash('Sesión iniciada correctamente.');await go(destination,{replace:true});
     }else{flash('Registro guardado correctamente.');await go(state.view);}
   }catch(err){flash(err.message,true);if(button)button.disabled=false;}
   finally{state.busy=false;}
@@ -266,8 +353,13 @@ app.addEventListener('submit',async e=>{
 (async function start(){
   try{
     const result=await api('/api/auth/me');
-    if(result.user){state.user=result.user;state.csrf=result.csrf;state.profileId=result.profile_id;await go('dashboard');}
-    else{state.csrf=result.csrf;loginScreen();}
+    if(result.user){
+      state.user=result.user;state.csrf=result.csrf;state.profileId=result.profile_id;
+      const route=parsePageUrl();
+      const allowed=route.valid && route.role===state.user.role && navByRole[state.user.role].includes(route.view);
+      await go(allowed?route.view:'dashboard',{replace:!allowed});
+    }
+    else{state.csrf=result.csrf;if(location.pathname==='/recuperar-clave')recoveryScreen('request');else loginScreen();}
   }catch(e){loginScreen();flash(e.message,true);}
 })();
 
@@ -328,4 +420,14 @@ document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){
     e.preventDefault();openCommandPalette();
   }
+});
+
+// Volver/avanzar del navegador y enlaces directos sin perder el perfil autenticado.
+window.addEventListener('popstate',()=>{
+  const route=parsePageUrl();
+  if(!state.user){if(location.pathname==='/recuperar-clave'){recoveryScreen('request');return;}if(route.role)state.role=route.role;loginScreen();return;}
+  if(!route.valid || route.role!==state.user.role || !navByRole[state.user.role].includes(route.view)){
+    go('dashboard',{replace:true});return;
+  }
+  go(route.view,{fromHistory:true});
 });

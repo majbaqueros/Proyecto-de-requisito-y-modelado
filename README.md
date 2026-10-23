@@ -1,3 +1,7 @@
+> **Actualización V5.4:** La clave para recuperar contraseñas se guarda ahora en el volumen persistente `saludcita_secrets` de Docker. Sigue [`CORRECCION_V5_4_CLAVE_DOCKER.md`](CORRECCION_V5_4_CLAVE_DOCKER.md) y ejecuta el diagnóstico como `www-data`.
+
+> **Actualización V5.3:** si el buzón Mailpit está vacío y SaludCita muestra error de recuperación, sigue [`CORRECCION_V5_3_MAILPIT.md`](CORRECCION_V5_3_MAILPIT.md). Corrige la lectura de la clave por Apache y añade pruebas como `www-data`.
+
 # SaludCita v3 — Proyecto universitario (Requisitos, Análisis y SOLID)
 
 **Documento de proyecto actualizado:** [`docs/DOCUMENTO_REQUISITOS_Y_ANALISIS_COMPLETO.md`](docs/DOCUMENTO_REQUISITOS_Y_ANALISIS_COMPLETO.md). La documentación tiene Perfil, Marco Teórico, Modelo de Negocio, Captura de Requisitos (1.1–1.5), Análisis (2.1–2.4), 16 casos de uso en dos ciclos, 25 diagramas, tablas de clases y trazabilidad.
@@ -75,7 +79,7 @@ La pantalla inicial ofrece **Usar demo**. También puedes entrar a `/paciente`, 
 | Historia clínica | Consultar propia | — | Registrar/consultar propia agenda | — |
 | Facturas y pagos | Ver propias | Emitir y registrar pago | — | Emitir y registrar pago |
 | Campana de avisos/notificaciones | Propias | Propias | Propias | Propias |
-| Médicos, especialidades y horarios | Consultar | Consultar | Consultar | Crear y consultar |
+| Médicos, especialidades y horarios | Consultar | Consultar | Consultar | Crear, consultar y eliminar |
 | Personal / cuentas administrativas | — | — | — | Crear / consultar |
 
 **Facturación y pagos:** simulación académica en bolivianos (Bs). La tarifa de «seguro» aplica un descuento demostrativo del 20%; no se conecta a aseguradoras, bancos, sistemas de pago reales ni al SIN. Las notificaciones son **internas**, no envían correos reales ni WhatsApp.
@@ -149,3 +153,84 @@ clinica-citas-solid/
 Es una **demostración universitaria**, no un producto clínico real. Incluye control de roles en servidor, hash de contraseñas, consultas preparadas, cookie HTTP-only y token CSRF. Faltan, entre otros: límites contra ataques de fuerza bruta, auditoría de acceso a historias médicas, gestión de consentimiento, recuperación segura de contraseñas, copias de seguridad automatizadas, cifrado específico de datos médicos y evaluación de normativa aplicable. No uses nombres, correos, documentos ni historias médicas reales.
 
 Para el detalle de requisitos y diagramas, consulta **`docs/REQUISITOS_Y_UML.md`** y **`docs/ESTRUCTURA_Y_ENTREGA.md`**.
+
+
+## V4: rutas individuales y eliminación de horarios
+
+Después de iniciar sesión, cada módulo tiene una URL independiente y admite enlaces directos, recarga de página y navegación Atrás/Adelante. Ejemplos:
+
+- `http://localhost:8080/administrador` (resumen)
+- `http://localhost:8080/administrador/horarios` (crear, consultar y eliminar)
+- `http://localhost:8080/administrador/medicos` (catálogo de médicos)
+- `http://localhost:8080/administrador/citas` (citas)
+- `http://localhost:8080/administrador/usuarios` (usuarios)
+- `http://localhost:8080/paciente/citas` (citas propias)
+- `http://localhost:8080/medico/historias-clinicas` (historias clínicas)
+- `http://localhost:8080/recepcionista/facturacion` (cobros)
+
+Los enlaces usan el mismo frontend SPA (HTML/JavaScript) con rutas reales del navegador. El servidor Apache entrega la misma plantilla HTML para cada ruta de página; las API siguen siendo independientes y **verifican sesión, rol y CSRF del lado del servidor**. Una URL por sí misma nunca concede permisos.
+
+### Eliminar horarios como administrador
+
+1. Inicia sesión con la cuenta `admin@clinica.local`.
+2. Visita `/administrador/horarios`.
+3. Busca la franja y pulsa **Eliminar**; confirma la acción.
+4. El frontend llama a `DELETE /api/schedules/{id}` con la sesión y el token CSRF.
+5. `HorarioController` verifica el rol y `ServicioHorarios` comprueba, dentro de una transacción, que no haya citas futuras pendientes o confirmadas asociadas a la franja. Si existen, responde **409 Conflict** y exige cancelar o reprogramar las citas antes. Si no existen, borra la franja y actualiza el listado.
+
+Por seguridad, no borres citas históricas, no elimines directamente filas desde la interfaz y **no uses** `docker compose down -v` porque elimina el volumen de PostgreSQL.
+
+### Actualizar desde V3
+
+Haz copia de seguridad de tu carpeta y la BD. Sustituye el código, conserva tu `docker-compose.yml` y ejecuta `docker compose up -d --build` desde `clinica-citas-solid`; no hace falta reinstalar la BD ni volver a ejecutar `scripts/install.php` si ya existe. Recarga con `Ctrl+F5`. En pruebas nuevas sí se puede instalar desde cero con `docker compose exec app php scripts/install.php`.
+
+**Detalle del caso de uso CU05 y secuencia UML:** `docs/ACTUALIZACION_V4_RUTAS_HORARIOS.md`.
+
+---
+
+## V5 — Seguridad, usuarios, recuperación y bitácora
+
+Esta entrega agrega desactivación/reactivación de cuentas desde `/administrador/usuarios`, bitácora de PostgreSQL en `/administrador/bitacora`, recuperación de contraseñas desde «¿Olvidaste tu contraseña?» y bloqueo temporal de inicio de sesión después de repetidos errores. Lee el detalle en `docs/ACTUALIZACION_V5_SEGURIDAD_BITACORA.md`.
+
+### Actualizar V4 → V5 SIN borrar los registros
+
+1. Cierra el proyecto y **haz una copia de seguridad** de los archivos y de PostgreSQL si conservas datos importantes.
+2. Sustituye los archivos de la carpeta `clinica-citas-solid` por los de V5 (mantén el volumen Docker existente; no ejecutes `docker compose down -v`).
+3. Abre PowerShell dentro de la carpeta que contiene `docker-compose.yml`.
+4. Ejecuta los comandos **en este orden**:
+
+```powershell
+docker compose up -d --build
+docker compose exec app php scripts/install.php
+docker compose exec app php tests/run.php
+docker compose exec app php tests/seguridad.php
+```
+
+`install.php` aplica una migración **no destructiva** para crear la bitácora, los registros de intentos y la tabla de códigos de recuperación. Conserva tus citas y usuarios actuales; los datos demostrativos se crean solo cuando faltan.
+
+Abre `http://localhost:8080`, y el buzón de prueba de correos `http://localhost:8025`.
+
+### Enviar código a correos reales
+
+Por defecto **Mailpit captura mensajes localmente, no los envía a Gmail ni Outlook**. Para un envío real copia `.env.example` a `.env`, configura `SMTP_HOST`, `SMTP_PORT`, `SMTP_ENCRYPTION=starttls`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` con credenciales de un servicio SMTP autorizado; luego ejecuta `docker compose up -d --force-recreate app`. Nunca publiques `.env`, ni uses contraseñas reales en el repositorio.
+
+### Cambiar «5 intentos / 5 minutos»
+
+En `.env` (dentro de `clinica-citas-solid`) define:
+
+```env
+AUTH_MAX_ATTEMPTS=5
+AUTH_LOCK_MINUTES=5
+```
+
+Para aplicar nuevos valores: `docker compose up -d --force-recreate app`. No hay que modificar JavaScript para cambiar estos límites; se aplican en PHP y PostgreSQL. La política agrupa intentos por cuenta, rol e IP.
+
+### Consultar cambios directamente en la terminal
+
+```powershell
+docker compose exec app php scripts/audit.php 30
+docker compose exec app php scripts/audit.php 20 users
+docker compose exec db psql -U clinica -d clinica -c "SELECT id,occurred_at,source,table_name,operation FROM audit_logs ORDER BY id DESC LIMIT 15;"
+```
+
+La baja de usuarios es **lógica**, no física: conserva historial médico, referencias y facturas. Esto es especialmente importante para la integridad de datos del sistema.

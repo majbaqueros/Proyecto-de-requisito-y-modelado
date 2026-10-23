@@ -63,10 +63,10 @@ catch (DomainException $e) {check(true,'Política rechaza reactivar cancelada');
 try {$politica->validar('pendiente','confirmada','paciente',$future);check(false,'Paciente no confirma');}
 catch (DomainException $e) {check(true,'Paciente no confirma cita');}
 $routes=require dirname(__DIR__).'/routes/api.php';
-check(count($routes)===25,'Las 25 rutas están separadas del controlador frontal');
+check(count($routes)===31,'Las 31 rutas están separadas del controlador frontal');
 foreach ($routes as $route) {
     check(class_exists($route[2]) && method_exists($route[2], $route[3]),
         'Ruta ' . $route[0] . ' ' . $route[1] . ' apunta a controlador y método reales');
 }
-check(count(array_filter($routes,fn($r)=>$r[4]))===4,'Solo login, sesión, logout y registro son rutas públicas');
+check(count(array_filter($routes,fn($r)=>$r[4]))===6,'Solo rutas públicas de autenticación y recuperación están sin login');
 echo "\nTODAS LAS PRUEBAS UNITARIAS PASARON.\n";

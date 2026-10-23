@@ -1,4 +1,5 @@
 .env
-vendor/
-*.log
+storage/app.key
+storage/*.log
 .DS_Store
+.vscode/

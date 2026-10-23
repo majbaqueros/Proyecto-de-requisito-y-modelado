@@ -11,6 +11,10 @@ final class Router {
     public function __construct(private PDO $db, private NotificadorInterface $notifier) {}
 
     public function dispatch(string $path, string $method): void {
+        Auth::verifySession($this->db);
+        if($actor=Auth::user()) {
+            $this->db->prepare("SELECT set_config('saludcita.actor_id',?,false)")->execute([(string)$actor['id']]);
+        }
         $routes = require dirname(__DIR__, 2) . '/routes/api.php';
         foreach ($routes as [$verb, $pattern, $class, $action, $public]) {
             if ($verb !== $method || !preg_match($pattern, $path, $params)) { continue; }

@@ -13,12 +13,17 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "127.0.0.1:8025:8025"
   app:
     build: .
     ports:
       - "8080:80"
     volumes:
       - .:/var/www/html
+      - saludcita_secrets:/var/lib/saludcita
     environment:
       DB_HOST: db
       DB_PORT: "5432"
@@ -27,8 +32,21 @@ services:
       DB_PASSWORD: clinica_dev
       APP_ENV: development
       APP_TZ: America/La_Paz
+      AUTH_MAX_ATTEMPTS: ${AUTH_MAX_ATTEMPTS:-5}
+      AUTH_LOCK_MINUTES: ${AUTH_LOCK_MINUTES:-5}
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_ENCRYPTION: ${SMTP_ENCRYPTION:-none}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-no-reply@saludcita.local}
+      APP_KEY: ${APP_KEY:-}
+      APP_KEY_FILE: /var/lib/saludcita/app.key
     depends_on:
       db:
         condition: service_healthy
+      mailpit:
+        condition: service_started
 volumes:
   postgres_data:
+  saludcita_secrets:

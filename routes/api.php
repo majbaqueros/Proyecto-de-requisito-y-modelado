@@ -1,7 +1,9 @@
 <?php
 /** Tabla declarativa: método, expresión de ruta, clase, acción, acceso público. */
-use App\Http\Controllers\{AuthController,DashboardController,CatalogoController,UsuarioController,CitaController,HistoriaClinicaController,FacturaController,NotificacionController};
+use App\Http\Controllers\{AuthController,DashboardController,CatalogoController,UsuarioController,BitacoraController,CitaController,HistoriaClinicaController,FacturaController,NotificacionController,HorarioController};
 return [
+    ['POST', '~^/api/auth/forgot-password$~', AuthController::class, 'solicitarRecuperacion', true],
+    ['POST', '~^/api/auth/reset-password$~', AuthController::class, 'restablecerClave', true],
     ['POST', '~^/api/auth/login$~', AuthController::class, 'login', true],
     ['GET', '~^/api/auth/me$~', AuthController::class, 'me', true],
     ['POST', '~^/api/auth/register$~', AuthController::class, 'register', true],
@@ -11,12 +13,16 @@ return [
     ['POST', '~^/api/specialties$~', CatalogoController::class, 'crearEspecialidad', false],
     ['GET', '~^/api/doctors$~', CatalogoController::class, 'medicos', false],
     ['POST', '~^/api/doctors$~', CatalogoController::class, 'crearMedico', false],
-    ['GET', '~^/api/schedules$~', CatalogoController::class, 'horarios', false],
-    ['POST', '~^/api/schedules$~', CatalogoController::class, 'crearHorario', false],
+    ['GET', '~^/api/schedules$~', HorarioController::class, 'index', false],
+    ['POST', '~^/api/schedules$~', HorarioController::class, 'crear', false],
+    ['DELETE', '~^/api/schedules/(\d+)$~', HorarioController::class, 'eliminar', false],
     ['GET', '~^/api/patients$~', UsuarioController::class, 'pacientes', false],
     ['POST', '~^/api/patients$~', UsuarioController::class, 'crearPaciente', false],
     ['GET', '~^/api/users$~', UsuarioController::class, 'usuarios', false],
     ['POST', '~^/api/users$~', UsuarioController::class, 'crearUsuario', false],
+    ['DELETE', '~^/api/users/(\d+)$~', UsuarioController::class, 'eliminarUsuario', false],
+    ['PATCH', '~^/api/users/(\d+)/restore$~', UsuarioController::class, 'restaurarUsuario', false],
+    ['GET', '~^/api/audit$~', BitacoraController::class, 'index', false],
     ['GET', '~^/api/appointments$~', CitaController::class, 'index', false],
     ['POST', '~^/api/appointments$~', CitaController::class, 'agendar', false],
     ['PATCH', '~^/api/appointments/(\d+)/status$~', CitaController::class, 'cambiarEstado', false],

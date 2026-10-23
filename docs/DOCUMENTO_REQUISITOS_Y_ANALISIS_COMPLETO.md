@@ -255,20 +255,20 @@ Cada ficha contiene propósito, iniciador, precondiciones, escenario principal, 
 
 **PROTOTIPO CU04:** Panel → Especialidades / Médicos. La pantalla está implementada mediante vistas generadas desde `public/assets/app.js`, y datos del servidor PHP. Su disponibilidad depende del rol.
 
-#### CU05 — CONFIGURAR HORARIOS DE MÉDICOS
+#### CU05 — CONFIGURAR Y ELIMINAR HORARIOS DE MÉDICOS
 
 | Elemento | Descripción |
 | --- | --- |
-| Propósito | Configurar horarios de médicos |
+| Propósito | Crear y eliminar horarios semanales de médicos, preservando las citas ya comprometidas |
 | Actor iniciador | Administrador |
 | Precondición | Médico registrado |
-| Flujo principal | 1. Seleccionar médico, día e intervalo. 2. Comprobar rango de horas y crear horario semanal del médico. 3. Se presenta la respuesta en pantalla. |
+| Flujo principal | 1. Crear: seleccionar médico, día e intervalo; validar solapes y guardar. 2. Eliminar: elegir una franja sin citas futuras activas, confirmar y retirar el horario. 3. Actualizar la lista. |
 | Postcondición | Horario de atención disponible para reservas |
-| Excepción / flujo alternativo | Hora final anterior, duplicado, médico no existe |
+| Excepción / flujo alternativo | Hora final anterior, horario superpuesto, médico inexistente; al eliminar, bloquear si hay citas futuras pendientes o confirmadas (HTTP 409) |
 | Prioridad / riesgo | Alta / Alto |
-| Implementación | CatalogoController.crearHorario |
+| Implementación | HorarioController (index, crear, eliminar), ServicioHorarios.eliminar, PostgreSQL schedules, rutas GET/POST/DELETE /api/schedules |
 
-**PROTOTIPO CU05:** Panel → Horarios. La pantalla está implementada mediante vistas generadas desde `public/assets/app.js`, y datos del servidor PHP. Su disponibilidad depende del rol.
+**PROTOTIPO CU05:** `/administrador/horarios` (crear y eliminar horarios). La pantalla está implementada mediante vistas generadas desde `public/assets/app.js`, y datos del servidor PHP. Su disponibilidad depende del rol.
 
 #### CU06 — AGENDAR UNA CITA MÉDICA
 
@@ -883,3 +883,8 @@ El repositorio es un prototipo: las facturas no son fiscales y el descuento de s
 
 La organización de secciones (Perfil, Marco teórico, Modelo de negocio, Captura de requisitos, Análisis) fue inspirada en el documento universitario de referencia proporcionado por el usuario (“SEGUNDO PARCIAL SI1_PRESENTACION #2”), cuyo proyecto temático es asignación de horarios académicos. Las descripciones, tablas y diagramas de este documento fueron redactados específicamente para SaludCita. La estructura técnica se contrastó con el código real de SaludCita versión 2.
 
+
+
+## ANEXO V4 — CASO DE USO CU05: ELIMINACIÓN DE HORARIOS
+
+Consultar el análisis del controlador, servicio, flujo alternativo 409, secuencia y rutas individuales en `docs/ACTUALIZACION_V4_RUTAS_HORARIOS.md`. La ruta de usuario `/administrador/horarios` corresponde al backend autenticado `DELETE /api/schedules/{id}`.

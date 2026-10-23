@@ -34,22 +34,4 @@ final class CatalogoController extends BaseController {
         $this->db->commit(); Http::json(['id' => $row['id']], 201);
     
     }
-    public function horarios(array $params = []): void {
-        $args = []; $filter = '';
-        if (isset($_GET['doctor_id']) && ctype_digit((string)$_GET['doctor_id'])) { $filter='WHERE s.doctor_id=?'; $args[]=(int)$_GET['doctor_id']; }
-        Http::json($this->many($this->db, "SELECT s.*,u.name AS doctor_name FROM schedules s JOIN doctors d ON d.id=s.doctor_id JOIN users u ON u.id=d.user_id {$filter} ORDER BY u.name,s.weekday,s.start_time", $args));
-    
-    }
-    public function crearHorario(array $params = []): void {
-        Auth::roles('administrador');
-        $b=Http::body(); Http::requireFields($b,['doctor_id','weekday','start_time','end_time']);
-        if (!is_numeric($b['weekday']) || (int)$b['weekday'] < 0 || (int)$b['weekday'] > 6 ||
-            !preg_match('/^\d{2}:\d{2}$/', (string)$b['start_time']) || !preg_match('/^\d{2}:\d{2}$/', (string)$b['end_time']) ||
-            $b['start_time'] >= $b['end_time']) { Http::fail('Horario inválido.'); }
-        $overlap = $this->one($this->db, 'SELECT COUNT(*) AS n FROM schedules WHERE doctor_id=? AND weekday=? AND start_time < ? AND end_time > ?', [(int)$b['doctor_id'],(int)$b['weekday'],$b['end_time'],$b['start_time']]);
-        if ((int)$overlap['n'] > 0) { Http::fail('El horario se superpone con otro existente.'); }
-        $row = $this->one($this->db, 'INSERT INTO schedules(doctor_id,weekday,start_time,end_time) VALUES (?,?,?,?) RETURNING *', [(int)$b['doctor_id'],(int)$b['weekday'],$b['start_time'],$b['end_time']]);
-        Http::json($row,201);
-    
-    }
 }
