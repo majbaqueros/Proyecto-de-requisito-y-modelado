@@ -1,7 +1,9 @@
 'use strict';
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
-const state = { user:null, csrf:null, profileId:null, role:'paciente', view:'dashboard', busy:false, unread:0 };
+const state = { user:null, csrf:null, profileId:null, role:'paciente', view:'dashboard', busy:false, unread:0, filter:'', filterStatus:'todos' };
+const themeKey='saludcita-theme';
+try { document.documentElement.dataset.theme=localStorage.getItem(themeKey)==='dark'?'dark':'light'; } catch { document.documentElement.dataset.theme='light'; }
 const roles = {
   paciente:{label:'Paciente',emoji:'🧑‍⚕️',description:'Mis citas y mi información'},
   recepcionista:{label:'Recepcionista',emoji:'🗓️',description:'Agenda y atención al público'},
@@ -60,13 +62,13 @@ let toastTimer;
 function flash(text,error=false){toast.textContent=text;toast.className='toast show'+(error?' error':'');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('show'),4000);}
 function loginScreen(){
   const role=roles[state.role];
-  app.innerHTML=`<div class="login-layout"><aside class="login-art"><div class="brand"><div class="brandmark">✚</div>SaludCita</div><div class="login-copy"><div class="eyebrow">PROYECTO UNIVERSITARIO</div><h1>Una mejor forma de cuidar cada cita.</h1><p>Un sistema completo de gestión de citas médicas, con acceso seguro por roles y componentes independientes construidos con principios SOLID.</p><div class="feature"><b>✓</b>Agenda y disponibilidad médica</div><div class="feature"><b>✓</b>Consultas e historias clínicas</div><div class="feature"><b>✓</b>Facturación y notificaciones</div></div><div class="login-foot">Ingeniería de Requisitos y Modelado · Demo académica</div></aside>
-  <main class="login-right"><div class="login-panel"><div class="eyebrow">ACCESO AL SISTEMA</div><h2>Bienvenido/a</h2><p class="sub">Selecciona tu perfil e inicia sesión para entrar a tu espacio de trabajo.</p><div class="role-choices">${Object.entries(roles).map(([id,r])=>`<button class="role-card ${id===state.role?'active':''}" type="button" data-role="${id}"><span class="ico">${r.emoji}</span><span><strong>${r.label}</strong><small>${r.description}</small></span></button>`).join('')}</div><form data-form="login"><div class="field"><label for="login-email">Correo electrónico</label><input id="login-email" name="email" type="email" placeholder="nombre@clinica.com" autocomplete="username" required></div><div class="field"><label for="login-password">Contraseña</label><input id="login-password" name="password" type="password" placeholder="••••••••" autocomplete="current-password" required></div><button type="submit" class="primary full">Entrar como ${role.label} →</button></form>${state.role==='paciente'?`<div class="register-prompt">¿Es tu primera vez? <button type="button" class="text-link" data-show-register>Crear cuenta de paciente</button></div>`:''}<div class="demo-box"><div class="demo-title">🔑 Acceso de demostración</div><p>Las credenciales son únicamente para pruebas locales. No usar en producción.</p><div class="demo-row"><code>${escapeHtml(demo[state.role][0])}</code><button type="button" class="secondary small" data-demo>Usar demo</button></div></div></div></main></div>`;
+  app.innerHTML=`<div class="login-layout"><aside class="login-art"><div class="brand"><div class="brandmark">✚</div>SaludCita</div><div class="login-copy"><div class="eyebrow">PROYECTO UNIVERSITARIO · SALUD DIGITAL</div><h1>Una mejor forma de cuidar cada cita.</h1><p>Un sistema completo de gestión de citas médicas, con acceso seguro por roles y componentes independientes construidos con principios SOLID.</p><div class="feature"><b>✓</b>Agenda y disponibilidad médica</div><div class="feature"><b>✓</b>Consultas e historias clínicas</div><div class="feature"><b>✓</b>Facturación y notificaciones</div></div><div class="login-foot"><span class="live-dot"></span> Arquitectura modular · Ingeniería de Requisitos · SOLID</div></aside>
+  <main class="login-right"><div class="login-panel"><div class="login-topline"><span class="secure-mark">● SISTEMA CLÍNICO · DEMOSTRACIÓN</span><button type="button" class="mode-toggle" data-theme-toggle aria-label="Cambiar modo de visualización">◐ <span>Modo</span></button></div><div class="eyebrow">ACCESO AL SISTEMA</div><h2>Bienvenido/a</h2><p class="sub">Selecciona tu perfil e inicia sesión para entrar a tu espacio de trabajo.</p><div class="role-choices">${Object.entries(roles).map(([id,r])=>`<button class="role-card ${id===state.role?'active':''}" type="button" data-role="${id}"><span class="ico">${r.emoji}</span><span><strong>${r.label}</strong><small>${r.description}</small></span></button>`).join('')}</div><form data-form="login"><div class="field"><label for="login-email">Correo electrónico</label><input id="login-email" name="email" type="email" placeholder="nombre@clinica.com" autocomplete="username" required></div><div class="field"><label for="login-password">Contraseña</label><input id="login-password" name="password" type="password" placeholder="••••••••" autocomplete="current-password" required><button type="button" class="show-password" data-show-password aria-label="Mostrar u ocultar contraseña">Mostrar</button></div><button type="submit" class="primary full">Entrar como ${role.label} →</button></form>${state.role==='paciente'?`<div class="register-prompt">¿Es tu primera vez? <button type="button" class="text-link" data-show-register>Crear cuenta de paciente</button></div>`:''}<div class="demo-box"><div class="demo-title">🔑 Acceso de demostración</div><p>Las credenciales son únicamente para pruebas locales. No usar en producción.</p><div class="demo-row"><code>${escapeHtml(demo[state.role][0])}</code><button type="button" class="secondary small" data-demo>Usar demo</button></div></div></div></main></div>`;
 }
 function registerScreen() {
   state.role='paciente';history.replaceState({},'','/paciente');
   app.innerHTML=`<div class="login-layout"><aside class="login-art"><div class="brand"><div class="brandmark">✚</div>SaludCita</div><div class="login-copy"><div class="eyebrow">PACIENTES</div><h1>Tu salud empieza con una cita.</h1><p>Crea tu cuenta para solicitar turnos médicos, consultar tus reservas y recibir notificaciones.</p><div class="feature"><b>✓</b>Registro de paciente</div><div class="feature"><b>✓</b>Agenda médica</div><div class="feature"><b>✓</b>Seguimiento de citas</div></div><div class="login-foot">Sistema universitario de demostración · No usar datos reales</div></aside>
-  <main class="login-right"><div class="login-panel"><div class="eyebrow">NUEVO PACIENTE</div><h2>Crear cuenta</h2><p class="sub">El registro público solo permite crear cuentas de pacientes.</p><form data-form="register"><div class="field"><label>Nombre completo</label><input name="name" required minlength="3" maxlength="120" autocomplete="name"></div><div class="field"><label>Correo electrónico</label><input name="email" type="email" required autocomplete="email"></div><div class="field"><label>Documento / CI</label><input name="document" required minlength="4" maxlength="30"></div><div class="field"><label>Contraseña (mín. 8 caracteres)</label><input name="password" type="password" minlength="8" required autocomplete="new-password"></div><div class="field"><label>Teléfono (opcional)</label><input name="phone" type="tel"></div><button type="submit" class="primary full">Crear mi cuenta</button></form><div class="register-prompt">¿Ya tienes cuenta? <button class="text-link" data-back-login>Iniciar sesión</button></div></div></main></div>`;
+  <main class="login-right"><div class="login-panel"><div class="login-topline"><span class="secure-mark">● SISTEMA CLÍNICO · DEMOSTRACIÓN</span><button type="button" class="mode-toggle" data-theme-toggle aria-label="Cambiar modo de visualización">◐ <span>Modo</span></button></div><div class="eyebrow">NUEVO PACIENTE</div><h2>Crear cuenta</h2><p class="sub">El registro público solo permite crear cuentas de pacientes.</p><form data-form="register"><div class="field"><label>Nombre completo</label><input name="name" required minlength="3" maxlength="120" autocomplete="name"></div><div class="field"><label>Correo electrónico</label><input name="email" type="email" required autocomplete="email"></div><div class="field"><label>Documento / CI</label><input name="document" required minlength="4" maxlength="30"></div><div class="field"><label>Contraseña (mín. 8 caracteres)</label><input name="password" type="password" minlength="8" required autocomplete="new-password"></div><div class="field"><label>Teléfono (opcional)</label><input name="phone" type="tel"></div><button type="submit" class="primary full">Crear mi cuenta</button></form><div class="register-prompt">¿Ya tienes cuenta? <button class="text-link" data-back-login>Iniciar sesión</button></div></div></main></div>`;
 }
 
 async function toggleNotifications() {
@@ -92,7 +94,7 @@ async function refreshBell() {
 function shell(){
   const r=roles[state.user.role];
   const nav=navByRole[state.user.role];
-  app.innerHTML=`<div class="layout"><aside class="sidebar"><div class="brand"><div class="brandmark">✚</div>SaludCita</div><div class="sidebar-label">MENÚ PRINCIPAL</div><nav class="nav-menu" aria-label="Navegación">${nav.map(k=>`<button class="nav-link ${k===state.view?'active':''}" data-view="${k}"><span class="ico">${sections[k][0]}</span>${sections[k][1]}</button>`).join('')}</nav><div class="sidebar-bottom"><div class="avatar">${escapeHtml(state.user.name.charAt(0).toUpperCase())}</div><div><strong>${escapeHtml(state.user.name)}</strong><span>${r.label}</span></div></div><button class="sidebar-logout" data-logout>↪ Cerrar sesión</button></aside><div class="content-wrap"><header class="topbar"><div><span class="hello">Plataforma de atención médica</span><br><strong>${escapeHtml(state.user.name)}</strong></div><div class="topbar-right"><div class="notif-host"><button type="button" class="ghost small bell-button" data-bell title="Notificaciones" aria-label="Abrir notificaciones">🔔 <span id="unread-count" class="unread-count" hidden></span></button><div id="notifier-popover" class="notification-popover" hidden></div></div><span class="role-pill">${r.emoji} ${r.label}</span><button class="ghost small" data-logout title="Salir">Salir ↗</button></div></header><main class="page" id="page"><div class="boot" style="height:50vh"><div class="spinner"></div></div></main></div></div>`;
+  app.innerHTML=`<div class="layout"><aside class="sidebar"><div class="sidebar-glow"></div><div class="brand"><div class="brandmark">✚</div>SaludCita</div><div class="sidebar-label">ÁREA DE TRABAJO</div><nav class="nav-menu" aria-label="Navegación">${nav.map(k=>`<button class="nav-link ${k===state.view?'active':''}" data-view="${k}"><span class="ico">${sections[k][0]}</span>${sections[k][1]}</button>`).join('')}</nav><div class="sidebar-bottom"><div class="avatar">${escapeHtml(state.user.name.charAt(0).toUpperCase())}</div><div><strong>${escapeHtml(state.user.name)}</strong><span>${r.label}</span></div></div><button class="sidebar-logout" data-logout>↪ Cerrar sesión</button></aside><div class="content-wrap"><header class="topbar"><div class="topbar-leading"><span class="topbar-brand-dot"></span><div><span class="hello">PORTAL SALUDCITA · ${r.label.toUpperCase()}</span><br><strong>${escapeHtml(state.user.name)}</strong></div></div><div class="topbar-right"><button type="button" class="quick-search" data-open-search title="Buscar sección (Ctrl+K)">⌕ <span>Buscar sección</span> <kbd>Ctrl K</kbd></button><button type="button" class="mode-toggle" data-theme-toggle aria-label="Cambiar modo de visualización">◐</button><div class="notif-host"><button type="button" class="ghost small bell-button" data-bell title="Notificaciones" aria-label="Abrir notificaciones">🔔 <span id="unread-count" class="unread-count" hidden></span></button><div id="notifier-popover" class="notification-popover" hidden></div></div><span class="role-pill">${r.emoji} ${r.label}</span><button class="ghost small" data-logout title="Salir">Salir ↗</button></div></header><main class="page" id="page"><div class="boot" style="height:50vh"><div class="spinner"></div></div></main></div></div>`;
 }
 async function go(view){
   if(!navByRole[state.user.role].includes(view)) return;
@@ -101,7 +103,7 @@ async function go(view){
   try{
     const views={dashboard:dashboardView,appointments:appointmentsView,doctors:doctorsView,patients:patientsView,records:recordsView,invoices:invoicesView,schedules:schedulesView,specialties:specialtiesView,users:usersView,notifications:notificationsView};
     const html=await views[view]();
-    if(state.view===view&&document.getElementById('page')===target){ target.innerHTML=html; refreshBell(); }
+    if(state.view===view&&document.getElementById('page')===target){ target.innerHTML=html; enhanceView(target); refreshBell(); }
   }catch(e){if(document.getElementById('page')===target){target.innerHTML=panel('No se pudo cargar',`<p>${escapeHtml(e.message)}</p><button class="secondary" data-view="${view}">Reintentar</button>`);flash(e.message,true);}}
 }
 function statusButtons(a){
@@ -118,9 +120,9 @@ async function dashboardView(){
   const rows=data.recent.map(a=>`<tr><td class="name">#${a.id}</td><td>${fmtDate(a.scheduled_at)}</td><td>${escapeHtml(state.user.role==='paciente'?a.doctor_name:a.patient_name)}</td><td>${badge(a.status)}</td></tr>`);
   const greeting=state.user.role==='medico'?'Revisa tu agenda y registra las consultas realizadas.':state.user.role==='paciente'?'Organiza tus próximas consultas y revisa su estado.':state.user.role==='recepcionista'?'Organiza las citas y registra la atención a pacientes.':'Supervisa la clínica, su personal y sus operaciones.';
   return head('Panel de control',`Hola, ${escapeHtml(state.user.name)}. ${greeting}`)+
-    `<div class="grid-stats">${stats.map(s=>`<div class="stat-card"><div class="s-icon">${s[0]}</div><div class="stat-label">${s[1]}</div><div class="stat-value">${Number(s[2])}</div></div>`).join('')}</div>`+
-    `<div class="banner"><div><h3>Tu espacio de atención médica ✨</h3><p>Gestiona la información desde un solo lugar. Cada rol dispone únicamente de las funciones que le corresponden.</p></div><button class="secondary" data-view="appointments">Ver citas →</button></div>`+
-    panel('Actividad reciente',table(['Cita','Fecha','Participante','Estado'],rows))+
+    `<div class="grid-stats">${stats.map(s=>`<div class="stat-card"><div class="stat-top"><div class="s-icon">${s[0]}</div><span class="stat-chip">● Datos actuales</span></div><div class="stat-label">${s[1]}</div><div class="stat-value" data-count="${Number(s[2])}">0</div><div class="stat-mini"><span style="width:${Math.max(8,Math.min(100,Number(s[2])/Math.max(1,Number(c.total))*100))}%"></span></div></div>`).join('')}</div>`+
+    `<div class="banner"><div class="banner-overline">✦ TU CENTRO DE OPERACIONES</div><div><h3>La atención médica, mejor organizada.</h3><p>Una agenda clara, pacientes informados y decisiones respaldadas por información segura. Cada perfil accede a su espacio de trabajo.</p><div class="banner-pills"><span>✓ Acceso por roles</span><span>✓ Citas sin duplicados</span><span>✓ Historial y pagos</span></div></div><button class="secondary" data-view="appointments">Gestionar citas ↗</button></div>`+
+    panel('Última actividad clínica',table(['Cita','Fecha','Participante','Estado'],rows))+
     `<p class="footer-note">Tienes ${data.unread} notificación(es) sin leer. Plataforma académica; no utilizar con datos médicos reales sin controles adicionales.</p>`;
 }
 async function appointmentsView(){
@@ -136,7 +138,7 @@ async function appointmentsView(){
       `<p class="sub" style="font-size:.76rem;margin-top:15px">Duración: 30 minutos. Selecciona una hora dentro del horario del médico y con minutos 00 o 30. El sistema valida disponibilidad.</p>`);
   }
   const rows=items.map(a=>`<tr><td class="name">#${a.id}</td><td>${fmtDate(a.scheduled_at)}</td><td>${escapeHtml(a.patient_name)}</td><td>${escapeHtml(a.doctor_name)}<br><small>${escapeHtml(a.specialty)}</small></td><td title="${escapeHtml(a.reason)}">${escapeHtml(a.reason.slice(0,45))}</td><td>${badge(a.status)}</td><td><div class="actions">${statusButtons(a)}</div></td></tr>`);
-  const appointmentTable=panel(state.user.role==='medico'?'Mi agenda médica':'Listado de citas',table(['N°','Fecha','Paciente','Médico','Motivo','Estado','Acciones'],rows));
+  const appointmentTable=panel(state.user.role==='medico'?'Mi agenda médica':'Listado de citas',`<div class="list-toolbar"><label class="search-field">⌕ <input type="search" data-table-search placeholder="Buscar paciente, médico o fecha..." aria-label="Filtrar citas"></label><select data-table-status aria-label="Filtrar por estado"><option value="todos">Todos los estados</option><option value="pendiente">Pendiente</option><option value="confirmada">Confirmada</option><option value="completada">Completada</option><option value="cancelada">Cancelada</option></select></div><p class="filter-count" data-filter-count></p>`+table(['N°','Fecha','Paciente','Médico','Motivo','Estado','Acciones'],rows));
   const scheduletxt=`<details class="panel"><summary style="cursor:pointer;font-weight:800">🕘 Ver horarios de atención disponibles</summary><div class="table-scroll" style="margin-top:15px">${table(['Médico','Día','Desde','Hasta'],schedules.map(s=>`<tr><td>${escapeHtml(s.doctor_name)}</td><td>${days[Number(s.weekday)]}</td><td>${String(s.start_time).slice(0,5)}</td><td>${String(s.end_time).slice(0,5)}</td></tr>`))}</div></details>`;
   return head('Gestión de citas',state.user.role==='medico'?'Consulta tu agenda y registra el estado de las atenciones.':'Registra, confirma o cancela citas según tus permisos.')+
   (registration?`<div class="split"><div>${registration}</div><div>${appointmentTable}</div></div>`:appointmentTable)+scheduletxt;
@@ -207,6 +209,11 @@ async function notificationsView(){
 app.addEventListener('click',async e=>{
   const button=e.target.closest('button');
   if(!button || button.disabled || state.busy)return;
+  if(button.hasAttribute('data-show-password')){const field=document.getElementById('login-password');if(field){field.type=field.type==='password'?'text':'password';button.textContent=field.type==='password'?'Mostrar':'Ocultar';}return;}
+  if(button.hasAttribute('data-theme-toggle')){toggleTheme();return;}
+  if(button.hasAttribute('data-open-search')){openCommandPalette();return;}
+  if(button.hasAttribute('data-command-close')){document.getElementById('command-backdrop')?.remove();return;}
+  if(button.hasAttribute('data-command-view')){document.getElementById('command-backdrop')?.remove();await go(button.dataset.commandView);return;}
   if(button.hasAttribute('data-show-register')){registerScreen();return;}
   if(button.hasAttribute('data-back-login')){history.replaceState({},'','/paciente');loginScreen();return;}
   if(button.hasAttribute('data-bell')){await toggleNotifications();return;}
@@ -263,3 +270,62 @@ app.addEventListener('submit',async e=>{
     else{state.csrf=result.csrf;loginScreen();}
   }catch(e){loginScreen();flash(e.message,true);}
 })();
+
+// MEJORAS VISUALES INDEPENDIENTES: no modifican reglas de negocio ni control de permisos.
+function toggleTheme(){
+  const next=document.documentElement.dataset.theme==='dark'?'light':'dark';
+  document.documentElement.dataset.theme=next;
+  try{localStorage.setItem(themeKey,next);}catch{}
+}
+function enhanceView(target){
+  target.classList.add('page-enter');
+  // Contadores animados respetando preferencias de accesibilidad.
+  const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  target.querySelectorAll('[data-count]').forEach(element=>{
+    const finalValue=Math.max(0,Number(element.dataset.count)||0);
+    if(reduced){element.textContent=finalValue;return;}
+    const started=performance.now(), duration=520;
+    function tick(now){
+      if(!element.isConnected)return;
+      const p=Math.min(1,(now-started)/duration);
+      element.textContent=String(Math.round(finalValue*(1-Math.pow(1-p,3))));
+      if(p<1)requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  });
+  refreshTableFilter(target);
+}
+function refreshTableFilter(root=document){
+  const query=(root.querySelector('[data-table-search]')?.value||'').toLocaleLowerCase('es').trim();
+  const status=root.querySelector('[data-table-status]')?.value||'todos';
+  const rows=[...root.querySelectorAll('.data-table tbody tr')];
+  let visible=0;
+  rows.forEach(row=>{
+    const text=row.textContent.toLocaleLowerCase('es');
+    const match=text.includes(query)&&(status==='todos'||row.querySelector('.badge')?.textContent.toLowerCase().trim()===status);
+    row.hidden=!match;if(match)visible++;
+  });
+  const count=root.querySelector('[data-filter-count]');
+  if(count)count.textContent=`${visible} de ${rows.length} citas visibles`;
+}
+app.addEventListener('input',e=>{if(e.target.matches('[data-table-search]'))refreshTableFilter(document.getElementById('page'));});
+app.addEventListener('change',e=>{if(e.target.matches('[data-table-status]'))refreshTableFilter(document.getElementById('page'));});
+function openCommandPalette(){
+  if(!state.user||document.getElementById('command-backdrop'))return;
+  const items=navByRole[state.user.role];
+  const overlay=document.createElement('div');
+  overlay.id='command-backdrop';overlay.className='command-backdrop';
+  overlay.innerHTML=`<div class="command-dialog" role="dialog" aria-modal="true" aria-label="Buscar sección"><div class="command-entry">⌕ <input id="command-input" autofocus placeholder="Buscar una sección..." aria-label="Buscar sección"><button data-command-close aria-label="Cerrar búsqueda">✕</button></div><div class="command-items">${items.map(k=>`<button class="command-item" data-command-view="${k}"><span>${sections[k][0]}</span>${sections[k][1]}<small>↵</small></button>`).join('')}</div><div class="command-footer">ESC para cerrar · Las opciones dependen de tu perfil</div></div>`;
+  app.append(overlay);overlay.querySelector('input').focus();
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  overlay.querySelector('input').addEventListener('input',e=>{
+    const q=e.target.value.toLocaleLowerCase('es');
+    overlay.querySelectorAll('.command-item').forEach(btn=>{btn.hidden=!btn.textContent.toLocaleLowerCase('es').includes(q);});
+  });
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){document.getElementById('command-backdrop')?.remove();document.getElementById('notifier-popover')?.setAttribute('hidden','');}
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){
+    e.preventDefault();openCommandPalette();
+  }
+});

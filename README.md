@@ -1,3 +1,35 @@
+# SaludCita v3 — Proyecto universitario (Requisitos, Análisis y SOLID)
+
+**Documento de proyecto actualizado:** [`docs/DOCUMENTO_REQUISITOS_Y_ANALISIS_COMPLETO.md`](docs/DOCUMENTO_REQUISITOS_Y_ANALISIS_COMPLETO.md). La documentación tiene Perfil, Marco Teórico, Modelo de Negocio, Captura de Requisitos (1.1–1.5), Análisis (2.1–2.4), 16 casos de uso en dos ciclos, 25 diagramas, tablas de clases y trazabilidad.
+
+**Interfaz mejorada (HTML/CSS/JavaScript):** diseño de login/panel actualizado, modo claro-oscuro (preferencia local), buscador de secciones `Ctrl + K`, tablas filtrables de citas, tarjetas resumen con contadores animados y diseño adaptativo móvil. Todas estas mejoras están en `public/assets/app.js` y `public/assets/styles.css`, sin instalar Node ni cambiar el backend de PHP.
+
+**Advertencia de privacidad:** prototipo de curso. No cargar historias clínicas ni contraseñas reales, ni usar como sistema de atención en producción. Los datos de demostración y descuentos son ficticios.
+
+### Actualizar desde SaludCita v2 sin perder la base de datos
+
+1. Copia de seguridad de la carpeta del proyecto y de la base de datos si contiene datos importantes.
+2. Reemplaza los archivos del directorio `clinica-citas-solid` por los de este paquete.
+3. Con Docker Desktop abierto, en esa carpeta ejecuta:
+
+```powershell
+docker compose up -d --build
+docker compose exec app php scripts/install.php
+```
+
+4. Abre `http://localhost:8080` y actualiza la pestaña con `Ctrl + F5`.
+
+**No ejecutes `docker compose down -v`: eliminaría el volumen PostgreSQL.** El script de instalación usa operaciones de inicialización/semilla; antes de ejecutarlo sobre una base con datos propios, haz respaldo.
+
+### Pruebas realizadas y límites
+
+- `php tests/run.php`: prueba de servicios SOLID, reglas de cita y mapeo de rutas.
+- Sintaxis `php -l` y `node --check` revisada.
+- Interfaz comprobada en Chromium con respuestas simuladas: login, dashboard, agenda, filtros, `Ctrl + K`, modo oscuro y diseño móvil.
+- **Pendiente:** probar todas las rutas con PostgreSQL y Docker de la computadora del estudiante. La visualización no equivale a verificación de integración.
+
+---
+
 # SaludCita — Citas médicas, SOLID y UML
 
 **Segundo parcial — Ingeniería de Requisitos y Modelado**
