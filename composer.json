@@ -1,0 +1,7 @@
+{
+  "name": "universidad/citas-medicas-solid",
+  "description": "Proyecto académico de ingeniería de requisitos: citas médicas y SOLID",
+  "type": "project",
+  "require": {"php": ">=8.2", "ext-pdo": "*", "ext-pdo_pgsql": "*"},
+  "autoload": {"psr-4": {"App\\": "app/"}}
+}
