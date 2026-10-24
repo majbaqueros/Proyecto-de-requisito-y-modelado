@@ -3,3 +3,6 @@ storage/app.key
 .git
 .vscode
 *.zip
+
+storage/
+node_modules/

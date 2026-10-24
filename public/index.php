@@ -9,6 +9,11 @@ use App\Infrastructure\NotificadorEnSistema;
 date_default_timezone_set(getenv('APP_TZ') ?: 'America/La_Paz');
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 if (PHP_SAPI === 'cli-server' && is_file(__DIR__ . $path)) { return false; }
+if ($path === '/healthz') {
+    header('Content-Type: text/plain; charset=utf-8');
+    echo 'ok';
+    exit;
+}
 if (!str_starts_with($path, '/api/')) {
     header('Content-Type: text/html; charset=utf-8');
     readfile(dirname(__DIR__) . '/resources/views/app.html');
@@ -20,7 +25,7 @@ ini_set('session.use_strict_mode', '1');
 session_name('clinic_session');
 session_set_cookie_params([
     'lifetime' => 0, 'path' => '/', 'httponly' => true,
-    'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+    'secure' => (getenv('APP_ENV') === 'production' || (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')),
     'samesite' => 'Lax'
 ]);
 session_start();

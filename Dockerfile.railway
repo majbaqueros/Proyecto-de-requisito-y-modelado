@@ -1,0 +1,18 @@
+# Servicio cloud de SaludCita. El Dockerfile original sigue funcionando localmente.
+FROM php:8.3-apache
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libpq-dev \
+    && docker-php-ext-install pdo_pgsql \
+    && a2enmod rewrite \
+    && rm -rf /var/lib/apt/lists/*
+RUN sed -i 's|DocumentRoot /var/www/html|DocumentRoot /var/www/html/public|' /etc/apache2/sites-available/000-default.conf \
+    && printf '%s\n' '<Directory /var/www/html/public>' 'AllowOverride All' 'Require all granted' '</Directory>' > /etc/apache2/conf-available/saludcita.conf \
+    && a2enconf saludcita \
+    && echo 'ServerName localhost' > /etc/apache2/conf-available/server-name.conf \
+    && a2enconf server-name
+WORKDIR /var/www/html
+COPY . /var/www/html/
+# El servidor Apache escucha el puerto 80: configura PORT=80 en Railway.
+ENV APP_ENV=production PORT=80
+EXPOSE 80
+CMD ["bash", "scripts/start_railway.sh"]
