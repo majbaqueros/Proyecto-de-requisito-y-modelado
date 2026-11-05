@@ -56,6 +56,9 @@ BEGIN
   ELSIF TG_TABLE_NAME = 'clinical_records' THEN
     before_row := before_row - 'symptoms' - 'diagnosis' - 'treatment' - 'notes';
     after_row := after_row - 'symptoms' - 'diagnosis' - 'treatment' - 'notes';
+  ELSIF TG_TABLE_NAME = 'treatment_plans' THEN
+    before_row := before_row - 'title' - 'instructions';
+    after_row := after_row - 'title' - 'instructions';
   END IF;
   record_key := COALESCE(after_row->>'id',before_row->>'id');
   IF TG_TABLE_NAME = 'users' THEN
