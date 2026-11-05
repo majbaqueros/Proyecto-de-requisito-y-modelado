@@ -26,6 +26,7 @@ if (!$db) { fwrite(STDERR, "No se pudo conectar a PostgreSQL. Revisa DB_HOST, DB
 try {
     $db->exec((string)file_get_contents($root.'/database/schema.sql'));
     $db->exec((string)file_get_contents($root.'/database/migrations/005_security.sql'));
+    $db->exec((string)file_get_contents($root.'/database/migrations/006_ciclo2_tratamientos.sql'));
     $adminCount=(int)$db->query("SELECT COUNT(*) FROM users WHERE role='administrador' AND active=TRUE")->fetchColumn();
     if ($adminCount===0) {
         $email=strtolower(trim((string)(getenv('CLOUD_ADMIN_EMAIL') ?: '')));
