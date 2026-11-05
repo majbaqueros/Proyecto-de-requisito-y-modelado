@@ -15,19 +15,19 @@ const urlRole = location.pathname.split('/').filter(Boolean)[0]?.toLowerCase() |
 if (Object.prototype.hasOwnProperty.call(roles, urlRole)) state.role = urlRole;
 const sections = {
   dashboard:['📊','Resumen'], appointments:['📅','Citas médicas'], doctors:['👨‍⚕️','Médicos'],
-  patients:['👥','Pacientes'], records:['🗂️','Historias clínicas'], invoices:['🧾','Facturación'],
+  patients:['👥','Pacientes'], records:['🗂️','Historias clínicas'], treatments:['💊','Tratamientos'], invoices:['🧾','Facturación'],
   schedules:['🕘','Horarios'], specialties:['⚕️','Especialidades'],users:['🔐','Usuarios'],audit:['📜','Bitácora'],notifications:['🔔','Notificaciones']
 };
 const navByRole = {
-  paciente:['dashboard','appointments','doctors','records','invoices','notifications'],
+  paciente:['dashboard','appointments','doctors','records','treatments','invoices','notifications'],
   recepcionista:['dashboard','appointments','patients','doctors','invoices','notifications'],
-  medico:['dashboard','appointments','records','doctors','notifications'],
+  medico:['dashboard','appointments','records','treatments','doctors','notifications'],
   administrador:['dashboard','appointments','patients','doctors','schedules','specialties','invoices','users','audit','notifications']
 };
 // Rutas reales del navegador, independientes para cada módulo y perfil.
 // Todas comparten la plantilla HTML, pero cada URL es accesible directamente y
 // el backend sigue protegiendo todas las operaciones con roles y sesión.
-const slugs={dashboard:'',appointments:'citas',doctors:'medicos',patients:'pacientes',records:'historias-clinicas',invoices:'facturacion',schedules:'horarios',specialties:'especialidades',users:'usuarios',audit:'bitacora',notifications:'notificaciones'};
+const slugs={dashboard:'',appointments:'citas',doctors:'medicos',patients:'pacientes',records:'historias-clinicas',treatments:'tratamientos',invoices:'facturacion',schedules:'horarios',specialties:'especialidades',users:'usuarios',audit:'bitacora',notifications:'notificaciones'};
 function pageUrl(role,view='dashboard'){
   return `/${role}${slugs[view]?'/'+slugs[view]:''}`;
 }
@@ -122,7 +122,7 @@ async function go(view,{fromHistory=false,replace=false}={}){
   shell();
   const target=document.getElementById('page');
   try{
-    const views={dashboard:dashboardView,appointments:appointmentsView,doctors:doctorsView,patients:patientsView,records:recordsView,invoices:invoicesView,schedules:schedulesView,specialties:specialtiesView,users:usersView,audit:auditView,notifications:notificationsView};
+    const views={dashboard:dashboardView,appointments:appointmentsView,doctors:doctorsView,patients:patientsView,records:recordsView,treatments:treatmentsView,invoices:invoicesView,schedules:schedulesView,specialties:specialtiesView,users:usersView,audit:auditView,notifications:notificationsView};
     const html=await views[view]();
     if(state.view===view&&document.getElementById('page')===target){ target.innerHTML=html; enhanceView(target); refreshBell(); }
   }catch(e){if(document.getElementById('page')===target){target.innerHTML=panel('No se pudo cargar',`<p>${escapeHtml(e.message)}</p><button class="secondary" data-view="${view}">Reintentar</button>`);flash(e.message,true);}}
@@ -210,6 +210,27 @@ async function recordsView(){
     `<div class="field wide"><label for="rec-notes">Observaciones</label><textarea id="rec-notes" name="notes" placeholder="Notas adicionales (opcional)"></textarea></div>`,'Guardar historia clínica')+`<p class="sub" style="font-size:.76rem">Solo puedes registrar una consulta de tus propias citas confirmadas que ya hayan comenzado. La cita se marca como completada.</p>`):'';
   const cards=records.map(r=>`<div class="record"><strong>🩺 ${escapeHtml(r.patient_name)} · Cita #${r.appointment_id}</strong><small>${fmtDate(r.created_at)} · ${escapeHtml(r.doctor_name)}</small><p><b>Síntomas:</b> ${escapeHtml(r.symptoms)}</p><p><b>Diagnóstico:</b> ${escapeHtml(r.diagnosis)}</p><p><b>Tratamiento:</b> ${escapeHtml(r.treatment)}</p>${r.notes?`<p><b>Notas:</b> ${escapeHtml(r.notes)}</p>`:''}</div>`).join('');
   return head('Historias clínicas',state.user.role==='medico'?'Documenta síntomas, diagnósticos y tratamientos de las consultas.':'Consulta tus registros médicos generados por los profesionales.')+(formRecord?`<div class="split"><div>${formRecord}</div><div>${panel('Registros médicos',cards||empty('Aún no hay consultas registradas.'))}</div></div>`:panel('Mis registros médicos',cards||empty('Aún no hay consultas registradas.')));
+}
+async function treatmentsView(){
+  const [items,records]=await Promise.all([api('/api/treatments'),state.user.role==='medico'?api('/api/records'):Promise.resolve([])]);
+  const fields=select('Historia clínica','clinical_record_id',records.map(r=>({value:r.id,label:`Consulta #${r.appointment_id} · ${r.patient_name}`})))+
+    input('Nombre del plan','title','text',{maxlength:160})+
+    textarea('Indicaciones y seguimiento','instructions','Ej. Cuidados posteriores a la consulta')+
+    input('Inicio','start_date','date')+input('Fin (opcional)','end_date','date',{required:false});
+  const create=state.user.role==='medico'?panel('Registrar tratamiento',
+    form('treatment',fields,'Guardar plan')+'<p class="sub">Solo planes vinculados a consultas propias. Usa datos ficticios.</p>'):'';
+  const cards=items.map(t=>`<div class="record"><strong>💊 ${escapeHtml(t.title)}</strong>
+    <small>${escapeHtml(t.patient_name)} · Cita #${Number(t.appointment_id)} · ${escapeHtml(t.doctor_name)} · ${escapeHtml(t.status)}</small>
+    <p><b>Vigencia:</b> ${escapeHtml(t.start_date)} - ${t.end_date?escapeHtml(t.end_date):'Sin fin definido'}</p>
+    <p><b>Indicaciones:</b> ${escapeHtml(t.instructions)}</p>
+    ${state.user.role==='medico'&&t.status!=='finalizado'?`<div class="actions">
+      ${(t.status==='activo'?['suspendido','finalizado']:['activo','finalizado']).map(st=>`<button type="button" class="secondary small" data-treatment-status="${st}" data-id="${Number(t.id)}">${st==='activo'?'Reanudar':st==='suspendido'?'Suspender':'Finalizar'}</button>`).join('')}
+      </div>`:''}</div>`).join('');
+  return head('Seguimiento de tratamientos',state.user.role==='medico'?
+    'Registra y actualiza planes de consultas atendidas.':
+    'Consulta los planes registrados para ti.')+
+    (create?`<div class="split"><div>${create}</div><div>${panel('Planes registrados',cards||empty('Sin planes aún.'))}</div></div>`:
+      panel('Mis tratamientos',cards||empty('Sin planes aún.')));
 }
 async function invoicesView(){
   const [invoices,appointments]=await Promise.all([api('/api/invoices'),['recepcionista','administrador'].includes(state.user.role)?api('/api/appointments'):Promise.resolve([])]);
@@ -301,6 +322,17 @@ if(button.hasAttribute('data-view')){await go(button.dataset.view);return;}
     finally{state.busy=false;}
     return;
   }
+  if(button.hasAttribute('data-treatment-status')){
+    if(state.user?.role!=='medico')return;
+    const planId=Number(button.dataset.id);
+    if(!Number.isSafeInteger(planId)||planId<1)return;
+    const status=button.dataset.treatmentStatus;
+    if(status==='finalizado'&&!window.confirm('¿Finalizar el tratamiento? No podrá reabrirse.'))return;
+    state.busy=true;button.disabled=true;
+    try{await api(`/api/treatments/${planId}/status`,{method:'PATCH',body:{status}});flash('Estado actualizado.');await go('treatments');}
+    catch(err){flash(err.message,true);button.disabled=false;}finally{state.busy=false;}
+    return;
+  }
   const id=Number(button.dataset.id||button.dataset.pay||button.dataset.read);
   let url='', status='';
   if(button.hasAttribute('data-status')){
@@ -320,7 +352,7 @@ app.addEventListener('submit',async e=>{
   e.preventDefault();if(state.busy)return;
   const action=target.dataset.form;
   const values=Object.fromEntries(new FormData(target).entries());
-  const endpoints={forgot:'/api/auth/forgot-password',reset:'/api/auth/reset-password',register:'/api/auth/register',login:'/api/auth/login',appointment:'/api/appointments',patient:'/api/patients',doctor:'/api/doctors',schedule:'/api/schedules',specialty:'/api/specialties',record:'/api/records',invoice:'/api/invoices',user:'/api/users'};
+  const endpoints={forgot:'/api/auth/forgot-password',reset:'/api/auth/reset-password',register:'/api/auth/register',login:'/api/auth/login',appointment:'/api/appointments',patient:'/api/patients',doctor:'/api/doctors',schedule:'/api/schedules',specialty:'/api/specialties',record:'/api/records',treatment:'/api/treatments',invoice:'/api/invoices',user:'/api/users'};
   if(action==='login')values.role=state.role;
   if(!endpoints[action])return;
   state.busy=true;
