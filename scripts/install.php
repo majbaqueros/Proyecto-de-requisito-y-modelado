@@ -43,6 +43,7 @@ $db = Database::connect();
 $db->exec(file_get_contents(dirname(__DIR__).'/database/schema.sql'));
 $db->exec(file_get_contents(dirname(__DIR__).'/database/migrations/005_security.sql'));
 $db->exec(file_get_contents(dirname(__DIR__).'/database/migrations/006_ciclo2_tratamientos.sql'));
+$db->exec(file_get_contents(dirname(__DIR__).'/database/migrations/007_google_oidc.sql'));
 function addUser(PDO $db, string $name, string $email, string $password, string $role): int {
     $stmt = $db->prepare('SELECT id FROM users WHERE email=?');
     $stmt->execute([$email]); $id=$stmt->fetchColumn();
