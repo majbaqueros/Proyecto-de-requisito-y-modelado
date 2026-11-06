@@ -1,7 +1,10 @@
 <?php
 /** Tabla declarativa: método, expresión de ruta, clase, acción, acceso público. */
-use App\Http\Controllers\{AuthController,DashboardController,CatalogoController,UsuarioController,BitacoraController,CitaController,HistoriaClinicaController,FacturaController,NotificacionController,HorarioController,TratamientoController};
+use App\Http\Controllers\{AuthController,DashboardController,CatalogoController,UsuarioController,BitacoraController,CitaController,HistoriaClinicaController,FacturaController,NotificacionController,HorarioController,TratamientoController,GoogleAuthController};
 return [
+    ['GET', '~^/api/auth/google/start$~', GoogleAuthController::class, 'iniciar', true],
+    ['GET', '~^/api/auth/google/callback$~', GoogleAuthController::class, 'callback', true],
+    ['POST', '~^/api/auth/google/link$~', GoogleAuthController::class, 'vincular', false],
     ['POST', '~^/api/auth/forgot-password$~', AuthController::class, 'solicitarRecuperacion', true],
     ['POST', '~^/api/auth/reset-password$~', AuthController::class, 'restablecerClave', true],
     ['POST', '~^/api/auth/login$~', AuthController::class, 'login', true],
