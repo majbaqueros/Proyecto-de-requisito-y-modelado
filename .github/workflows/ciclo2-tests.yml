@@ -1,0 +1,29 @@
+name: SaludCita - Verificacion Ciclo 2
+on:
+  pull_request:
+  push:
+    branches:
+      - feature/ciclo2-semana2-tratamientos
+jobs:
+  syntax_and_tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo, openssl
+      - name: Lint PHP
+        run: find app scripts tests public -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Comprobar JavaScript
+        run: node --check public/assets/app.js
+      - name: Pruebas de servicios e interfaces
+        run: php tests/run.php
+      - name: Pruebas de horarios
+        run: php tests/horarios.php
+      - name: Pruebas de seguridad
+        run: php tests/seguridad.php
+      - name: Pruebas de tratamientos
+        run: php tests/politica_tratamientos.php
+      - name: Pruebas locales OAuth
+        run: php tests/google_oidc.php

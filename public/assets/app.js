@@ -1,7 +1,7 @@
 'use strict';
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
-const state = { user:null, csrf:null, profileId:null, role:'paciente', view:'dashboard', busy:false, unread:0, filter:'', filterStatus:'todos' };
+const state = { user:null, csrf:null, profileId:null, googleEnabled:false, role:'paciente', view:'dashboard', busy:false, unread:0, filter:'', filterStatus:'todos' };
 const themeKey='saludcita-theme';
 try { document.documentElement.dataset.theme=localStorage.getItem(themeKey)==='dark'?'dark':'light'; } catch { document.documentElement.dataset.theme='light'; }
 const roles = {
@@ -15,19 +15,19 @@ const urlRole = location.pathname.split('/').filter(Boolean)[0]?.toLowerCase() |
 if (Object.prototype.hasOwnProperty.call(roles, urlRole)) state.role = urlRole;
 const sections = {
   dashboard:['📊','Resumen'], appointments:['📅','Citas médicas'], doctors:['👨‍⚕️','Médicos'],
-  patients:['👥','Pacientes'], records:['🗂️','Historias clínicas'], invoices:['🧾','Facturación'],
+  patients:['👥','Pacientes'], records:['🗂️','Historias clínicas'], treatments:['💊','Tratamientos'], invoices:['🧾','Facturación'],
   schedules:['🕘','Horarios'], specialties:['⚕️','Especialidades'],users:['🔐','Usuarios'],audit:['📜','Bitácora'],notifications:['🔔','Notificaciones']
 };
 const navByRole = {
-  paciente:['dashboard','appointments','doctors','records','invoices','notifications'],
+  paciente:['dashboard','appointments','doctors','records','treatments','invoices','notifications'],
   recepcionista:['dashboard','appointments','patients','doctors','invoices','notifications'],
-  medico:['dashboard','appointments','records','doctors','notifications'],
+  medico:['dashboard','appointments','records','treatments','doctors','notifications'],
   administrador:['dashboard','appointments','patients','doctors','schedules','specialties','invoices','users','audit','notifications']
 };
 // Rutas reales del navegador, independientes para cada módulo y perfil.
 // Todas comparten la plantilla HTML, pero cada URL es accesible directamente y
 // el backend sigue protegiendo todas las operaciones con roles y sesión.
-const slugs={dashboard:'',appointments:'citas',doctors:'medicos',patients:'pacientes',records:'historias-clinicas',invoices:'facturacion',schedules:'horarios',specialties:'especialidades',users:'usuarios',audit:'bitacora',notifications:'notificaciones'};
+const slugs={dashboard:'',appointments:'citas',doctors:'medicos',patients:'pacientes',records:'historias-clinicas',treatments:'tratamientos',invoices:'facturacion',schedules:'horarios',specialties:'especialidades',users:'usuarios',audit:'bitacora',notifications:'notificaciones'};
 function pageUrl(role,view='dashboard'){
   return `/${role}${slugs[view]?'/'+slugs[view]:''}`;
 }
@@ -74,7 +74,7 @@ function flash(text,error=false){toast.textContent=text;toast.className='toast s
 function loginScreen(){
   const role=roles[state.role];
   app.innerHTML=`<div class="login-layout"><aside class="login-art"><div class="brand"><div class="brandmark">✚</div>SaludCita</div><div class="login-copy"><div class="eyebrow">PROYECTO UNIVERSITARIO · SALUD DIGITAL</div><h1>Una mejor forma de cuidar cada cita.</h1><p>Un sistema completo de gestión de citas médicas, con acceso seguro por roles y componentes independientes construidos con principios SOLID.</p><div class="feature"><b>✓</b>Agenda y disponibilidad médica</div><div class="feature"><b>✓</b>Consultas e historias clínicas</div><div class="feature"><b>✓</b>Facturación y notificaciones</div></div><div class="login-foot"><span class="live-dot"></span> Arquitectura modular · Ingeniería de Requisitos · SOLID</div></aside>
-  <main class="login-right"><div class="login-panel"><div class="login-topline"><span class="secure-mark">● SISTEMA CLÍNICO · DEMOSTRACIÓN</span><button type="button" class="mode-toggle" data-theme-toggle aria-label="Cambiar modo de visualización">◐ <span>Modo</span></button></div><div class="eyebrow">ACCESO AL SISTEMA</div><h2>Bienvenido/a</h2><p class="sub">Selecciona tu perfil e inicia sesión para entrar a tu espacio de trabajo.</p><div class="role-choices">${Object.entries(roles).map(([id,r])=>`<button class="role-card ${id===state.role?'active':''}" type="button" data-role="${id}"><span class="ico">${r.emoji}</span><span><strong>${r.label}</strong><small>${r.description}</small></span></button>`).join('')}</div><form data-form="login"><div class="field"><label for="login-email">Correo electrónico</label><input id="login-email" name="email" type="email" placeholder="nombre@clinica.com" autocomplete="username" required></div><div class="field"><label for="login-password">Contraseña</label><input id="login-password" name="password" type="password" placeholder="••••••••" autocomplete="current-password" required><button type="button" class="show-password" data-show-password aria-label="Mostrar u ocultar contraseña">Mostrar</button></div><div class="forgot-row"><button type="button" class="text-link" data-forgot>¿Olvidaste tu contraseña?</button></div><button type="submit" class="primary full">Entrar como ${role.label} →</button></form>${state.role==='paciente'?`<div class="register-prompt">¿Es tu primera vez? <button type="button" class="text-link" data-show-register>Crear cuenta de paciente</button></div>`:''}<div class="login-footnote">Proyecto académico · No introduzcas datos médicos reales.</div></div></main></div>`;
+  <main class="login-right"><div class="login-panel"><div class="login-topline"><span class="secure-mark">● SISTEMA CLÍNICO · DEMOSTRACIÓN</span><button type="button" class="mode-toggle" data-theme-toggle aria-label="Cambiar modo de visualización">◐ <span>Modo</span></button></div><div class="eyebrow">ACCESO AL SISTEMA</div><h2>Bienvenido/a</h2><p class="sub">Selecciona tu perfil e inicia sesión para entrar a tu espacio de trabajo.</p><div class="role-choices">${Object.entries(roles).map(([id,r])=>`<button class="role-card ${id===state.role?'active':''}" type="button" data-role="${id}"><span class="ico">${r.emoji}</span><span><strong>${r.label}</strong><small>${r.description}</small></span></button>`).join('')}</div><form data-form="login"><div class="field"><label for="login-email">Correo electrónico</label><input id="login-email" name="email" type="email" placeholder="nombre@clinica.com" autocomplete="username" required></div><div class="field"><label for="login-password">Contraseña</label><input id="login-password" name="password" type="password" placeholder="••••••••" autocomplete="current-password" required><button type="button" class="show-password" data-show-password aria-label="Mostrar u ocultar contraseña">Mostrar</button></div><div class="forgot-row"><button type="button" class="text-link" data-forgot>¿Olvidaste tu contraseña?</button></div><button type="submit" class="primary full">Entrar como ${role.label} →</button></form>${state.googleEnabled?`<button type="button" class="secondary full google-entry" data-google-login><b>G</b> Continuar con Google</button><small class="google-hint">Primero vincula Google desde tu cuenta de SaludCita.</small>`:''}${state.role==='paciente'?`<div class="register-prompt">¿Es tu primera vez? <button type="button" class="text-link" data-show-register>Crear cuenta de paciente</button></div>`:''}<div class="login-footnote">Proyecto académico · No introduzcas datos médicos reales.</div></div></main></div>`;
 }
 function recoveryScreen(stage='request',email=''){
   history.replaceState({},'','/recuperar-clave');
@@ -113,7 +113,7 @@ async function refreshBell() {
 function shell(){
   const r=roles[state.user.role];
   const nav=navByRole[state.user.role];
-  app.innerHTML=`<div class="layout"><aside class="sidebar"><div class="sidebar-glow"></div><div class="brand"><div class="brandmark">✚</div>SaludCita</div><div class="sidebar-label">ÁREA DE TRABAJO</div><nav class="nav-menu" aria-label="Navegación">${nav.map(k=>`<a href="${pageUrl(state.user.role,k)}" class="nav-link ${k===state.view?'active':''}" ${k===state.view?'aria-current="page"':''} data-view="${k}"><span class="ico">${sections[k][0]}</span>${sections[k][1]}</a>`).join('')}</nav><div class="sidebar-bottom"><div class="avatar">${escapeHtml(state.user.name.charAt(0).toUpperCase())}</div><div><strong>${escapeHtml(state.user.name)}</strong><span>${r.label}</span></div></div><button class="sidebar-logout" data-logout>↪ Cerrar sesión</button></aside><div class="content-wrap"><header class="topbar"><div class="topbar-leading"><span class="topbar-brand-dot"></span><div><span class="hello">PORTAL SALUDCITA · ${r.label.toUpperCase()}</span><br><strong>${escapeHtml(state.user.name)}</strong></div></div><div class="topbar-right"><button type="button" class="quick-search" data-open-search title="Buscar sección (Ctrl+K)">⌕ <span>Buscar sección</span> <kbd>Ctrl K</kbd></button><button type="button" class="mode-toggle" data-theme-toggle aria-label="Cambiar modo de visualización">◐</button><div class="notif-host"><button type="button" class="ghost small bell-button" data-bell title="Notificaciones" aria-label="Abrir notificaciones">🔔 <span id="unread-count" class="unread-count" hidden></span></button><div id="notifier-popover" class="notification-popover" hidden></div></div><span class="role-pill">${r.emoji} ${r.label}</span><button class="ghost small" data-logout title="Salir">Salir ↗</button></div></header><main class="page" id="page"><div class="boot" style="height:50vh"><div class="spinner"></div></div></main></div></div>`;
+  app.innerHTML=`<div class="layout"><aside class="sidebar"><div class="sidebar-glow"></div><div class="brand"><div class="brandmark">✚</div>SaludCita</div><div class="sidebar-label">ÁREA DE TRABAJO</div><nav class="nav-menu" aria-label="Navegación">${nav.map(k=>`<a href="${pageUrl(state.user.role,k)}" class="nav-link ${k===state.view?'active':''}" ${k===state.view?'aria-current="page"':''} data-view="${k}"><span class="ico">${sections[k][0]}</span>${sections[k][1]}</a>`).join('')}</nav><div class="sidebar-bottom"><div class="avatar">${escapeHtml(state.user.name.charAt(0).toUpperCase())}</div><div><strong>${escapeHtml(state.user.name)}</strong><span>${r.label}</span></div></div><button class="sidebar-logout" data-logout>↪ Cerrar sesión</button></aside><div class="content-wrap"><header class="topbar"><div class="topbar-leading"><span class="topbar-brand-dot"></span><div><span class="hello">PORTAL SALUDCITA · ${r.label.toUpperCase()}</span><br><strong>${escapeHtml(state.user.name)}</strong></div></div><div class="topbar-right"><button type="button" class="quick-search" data-open-search title="Buscar sección (Ctrl+K)">⌕ <span>Buscar sección</span> <kbd>Ctrl K</kbd></button><button type="button" class="mode-toggle" data-theme-toggle aria-label="Cambiar modo de visualización">◐</button>${state.googleEnabled?'<button type="button" class="ghost small" data-google-link title="Vincular tu cuenta Google verificada">Vincular Google</button>':''}<div class="notif-host"><button type="button" class="ghost small bell-button" data-bell title="Notificaciones" aria-label="Abrir notificaciones">🔔 <span id="unread-count" class="unread-count" hidden></span></button><div id="notifier-popover" class="notification-popover" hidden></div></div><span class="role-pill">${r.emoji} ${r.label}</span><button class="ghost small" data-logout title="Salir">Salir ↗</button></div></header><main class="page" id="page"><div class="boot" style="height:50vh"><div class="spinner"></div></div></main></div></div>`;
 }
 async function go(view,{fromHistory=false,replace=false}={}){
   if(!state.user || !navByRole[state.user.role].includes(view)) return;
@@ -122,7 +122,7 @@ async function go(view,{fromHistory=false,replace=false}={}){
   shell();
   const target=document.getElementById('page');
   try{
-    const views={dashboard:dashboardView,appointments:appointmentsView,doctors:doctorsView,patients:patientsView,records:recordsView,invoices:invoicesView,schedules:schedulesView,specialties:specialtiesView,users:usersView,audit:auditView,notifications:notificationsView};
+    const views={dashboard:dashboardView,appointments:appointmentsView,doctors:doctorsView,patients:patientsView,records:recordsView,treatments:treatmentsView,invoices:invoicesView,schedules:schedulesView,specialties:specialtiesView,users:usersView,audit:auditView,notifications:notificationsView};
     const html=await views[view]();
     if(state.view===view&&document.getElementById('page')===target){ target.innerHTML=html; enhanceView(target); refreshBell(); }
   }catch(e){if(document.getElementById('page')===target){target.innerHTML=panel('No se pudo cargar',`<p>${escapeHtml(e.message)}</p><button class="secondary" data-view="${view}">Reintentar</button>`);flash(e.message,true);}}
@@ -211,6 +211,27 @@ async function recordsView(){
   const cards=records.map(r=>`<div class="record"><strong>🩺 ${escapeHtml(r.patient_name)} · Cita #${r.appointment_id}</strong><small>${fmtDate(r.created_at)} · ${escapeHtml(r.doctor_name)}</small><p><b>Síntomas:</b> ${escapeHtml(r.symptoms)}</p><p><b>Diagnóstico:</b> ${escapeHtml(r.diagnosis)}</p><p><b>Tratamiento:</b> ${escapeHtml(r.treatment)}</p>${r.notes?`<p><b>Notas:</b> ${escapeHtml(r.notes)}</p>`:''}</div>`).join('');
   return head('Historias clínicas',state.user.role==='medico'?'Documenta síntomas, diagnósticos y tratamientos de las consultas.':'Consulta tus registros médicos generados por los profesionales.')+(formRecord?`<div class="split"><div>${formRecord}</div><div>${panel('Registros médicos',cards||empty('Aún no hay consultas registradas.'))}</div></div>`:panel('Mis registros médicos',cards||empty('Aún no hay consultas registradas.')));
 }
+async function treatmentsView(){
+  const [items,records]=await Promise.all([api('/api/treatments'),state.user.role==='medico'?api('/api/records'):Promise.resolve([])]);
+  const fields=select('Historia clínica','clinical_record_id',records.map(r=>({value:r.id,label:`Consulta #${r.appointment_id} · ${r.patient_name}`})))+
+    input('Nombre del plan','title','text',{maxlength:160})+
+    textarea('Indicaciones y seguimiento','instructions','Ej. Cuidados posteriores a la consulta')+
+    input('Inicio','start_date','date')+input('Fin (opcional)','end_date','date',{required:false});
+  const create=state.user.role==='medico'?panel('Registrar tratamiento',
+    form('treatment',fields,'Guardar plan')+'<p class="sub">Solo planes vinculados a consultas propias. Usa datos ficticios.</p>'):'';
+  const cards=items.map(t=>`<div class="record"><strong>💊 ${escapeHtml(t.title)}</strong>
+    <small>${escapeHtml(t.patient_name)} · Cita #${Number(t.appointment_id)} · ${escapeHtml(t.doctor_name)} · ${escapeHtml(t.status)}</small>
+    <p><b>Vigencia:</b> ${escapeHtml(t.start_date)} - ${t.end_date?escapeHtml(t.end_date):'Sin fin definido'}</p>
+    <p><b>Indicaciones:</b> ${escapeHtml(t.instructions)}</p>
+    ${state.user.role==='medico'&&t.status!=='finalizado'?`<div class="actions">
+      ${(t.status==='activo'?['suspendido','finalizado']:['activo','finalizado']).map(st=>`<button type="button" class="secondary small" data-treatment-status="${st}" data-id="${Number(t.id)}">${st==='activo'?'Reanudar':st==='suspendido'?'Suspender':'Finalizar'}</button>`).join('')}
+      </div>`:''}</div>`).join('');
+  return head('Seguimiento de tratamientos',state.user.role==='medico'?
+    'Registra y actualiza planes de consultas atendidas.':
+    'Consulta los planes registrados para ti.')+
+    (create?`<div class="split"><div>${create}</div><div>${panel('Planes registrados',cards||empty('Sin planes aún.'))}</div></div>`:
+      panel('Mis tratamientos',cards||empty('Sin planes aún.')));
+}
 async function invoicesView(){
   const [invoices,appointments]=await Promise.all([api('/api/invoices'),['recepcionista','administrador'].includes(state.user.role)?api('/api/appointments'):Promise.resolve([])]);
   const invoiced=new Set(invoices.map(i=>Number(i.appointment_id)));
@@ -256,6 +277,17 @@ app.addEventListener('click',async e=>{
   }
   const button=e.target.closest('button');
   if(!button || button.disabled || state.busy)return;
+  if(button.hasAttribute('data-google-login')){
+    if(!Object.prototype.hasOwnProperty.call(roles,state.role))return;
+    location.assign('/api/auth/google/start?role='+encodeURIComponent(state.role));
+    return;
+  }
+  if(button.hasAttribute('data-google-link')){
+    state.busy=true;button.disabled=true;
+    try{const result=await api('/api/auth/google/link',{method:'POST'});location.assign(result.url);}
+    catch(err){flash(err.message,true);button.disabled=false;state.busy=false;}
+    return;
+  }
   if(button.hasAttribute('data-show-password')){const field=document.getElementById('login-password');if(field){field.type=field.type==='password'?'text':'password';button.textContent=field.type==='password'?'Mostrar':'Ocultar';}return;}
   if(button.hasAttribute('data-theme-toggle')){toggleTheme();return;}
   if(button.hasAttribute('data-open-search')){openCommandPalette();return;}
@@ -301,6 +333,17 @@ if(button.hasAttribute('data-view')){await go(button.dataset.view);return;}
     finally{state.busy=false;}
     return;
   }
+  if(button.hasAttribute('data-treatment-status')){
+    if(state.user?.role!=='medico')return;
+    const planId=Number(button.dataset.id);
+    if(!Number.isSafeInteger(planId)||planId<1)return;
+    const status=button.dataset.treatmentStatus;
+    if(status==='finalizado'&&!window.confirm('¿Finalizar el tratamiento? No podrá reabrirse.'))return;
+    state.busy=true;button.disabled=true;
+    try{await api(`/api/treatments/${planId}/status`,{method:'PATCH',body:{status}});flash('Estado actualizado.');await go('treatments');}
+    catch(err){flash(err.message,true);button.disabled=false;}finally{state.busy=false;}
+    return;
+  }
   const id=Number(button.dataset.id||button.dataset.pay||button.dataset.read);
   let url='', status='';
   if(button.hasAttribute('data-status')){
@@ -320,7 +363,7 @@ app.addEventListener('submit',async e=>{
   e.preventDefault();if(state.busy)return;
   const action=target.dataset.form;
   const values=Object.fromEntries(new FormData(target).entries());
-  const endpoints={forgot:'/api/auth/forgot-password',reset:'/api/auth/reset-password',register:'/api/auth/register',login:'/api/auth/login',appointment:'/api/appointments',patient:'/api/patients',doctor:'/api/doctors',schedule:'/api/schedules',specialty:'/api/specialties',record:'/api/records',invoice:'/api/invoices',user:'/api/users'};
+  const endpoints={forgot:'/api/auth/forgot-password',reset:'/api/auth/reset-password',register:'/api/auth/register',login:'/api/auth/login',appointment:'/api/appointments',patient:'/api/patients',doctor:'/api/doctors',schedule:'/api/schedules',specialty:'/api/specialties',record:'/api/records',treatment:'/api/treatments',invoice:'/api/invoices',user:'/api/users'};
   if(action==='login')values.role=state.role;
   if(!endpoints[action])return;
   state.busy=true;
@@ -343,12 +386,19 @@ app.addEventListener('submit',async e=>{
   try{
     const result=await api('/api/auth/me');
     if(result.user){
-      state.user=result.user;state.csrf=result.csrf;state.profileId=result.profile_id;
+      state.user=result.user;state.csrf=result.csrf;state.profileId=result.profile_id;state.googleEnabled=!!result.google_enabled;
       const route=parsePageUrl();
       const allowed=route.valid && route.role===state.user.role && navByRole[state.user.role].includes(route.view);
       await go(allowed?route.view:'dashboard',{replace:!allowed});
     }
-    else{state.csrf=result.csrf;if(location.pathname==='/recuperar-clave')recoveryScreen('request');else loginScreen();}
+    else{state.csrf=result.csrf;state.googleEnabled=!!result.google_enabled;if(location.pathname==='/recuperar-clave')recoveryScreen('request');else loginScreen();}
+    const params=new URLSearchParams(location.search);
+    if(params.has('google_linked')){history.replaceState({},'',location.pathname);flash('Google vinculado. Ya puedes iniciar sesión con Google.');}
+    else if(params.has('google_error')){
+      const messages={cancelado:'Inicio de sesión con Google cancelado o expirado.',sin_vincular:'Inicia sesión con tu contraseña y vincula tu cuenta Google primero.',perfil:'Google está vinculado a otro perfil de SaludCita.',configuracion:'No se pudo completar Google. Revisa la configuración o vinculación de cuentas.'};
+      const message=messages[params.get('google_error')]||messages.configuracion;
+      history.replaceState({},'',location.pathname);flash(message,true);
+    }
   }catch(e){loginScreen();flash(e.message,true);}
 })();
 

@@ -1,7 +1,10 @@
 <?php
 /** Tabla declarativa: método, expresión de ruta, clase, acción, acceso público. */
-use App\Http\Controllers\{AuthController,DashboardController,CatalogoController,UsuarioController,BitacoraController,CitaController,HistoriaClinicaController,FacturaController,NotificacionController,HorarioController};
+use App\Http\Controllers\{AuthController,DashboardController,CatalogoController,UsuarioController,BitacoraController,CitaController,HistoriaClinicaController,FacturaController,NotificacionController,HorarioController,TratamientoController,GoogleAuthController};
 return [
+    ['GET', '~^/api/auth/google/start$~', GoogleAuthController::class, 'iniciar', true],
+    ['GET', '~^/api/auth/google/callback$~', GoogleAuthController::class, 'callback', true],
+    ['POST', '~^/api/auth/google/link$~', GoogleAuthController::class, 'vincular', false],
     ['POST', '~^/api/auth/forgot-password$~', AuthController::class, 'solicitarRecuperacion', true],
     ['POST', '~^/api/auth/reset-password$~', AuthController::class, 'restablecerClave', true],
     ['POST', '~^/api/auth/login$~', AuthController::class, 'login', true],
@@ -26,6 +29,9 @@ return [
     ['GET', '~^/api/appointments$~', CitaController::class, 'index', false],
     ['POST', '~^/api/appointments$~', CitaController::class, 'agendar', false],
     ['PATCH', '~^/api/appointments/(\d+)/status$~', CitaController::class, 'cambiarEstado', false],
+    ['GET', '~^/api/treatments$~', TratamientoController::class, 'index', false],
+    ['POST', '~^/api/treatments$~', TratamientoController::class, 'crear', false],
+    ['PATCH', '~^/api/treatments/(\d+)/status$~', TratamientoController::class, 'cambiarEstado', false],
     ['GET', '~^/api/records$~', HistoriaClinicaController::class, 'index', false],
     ['POST', '~^/api/records$~', HistoriaClinicaController::class, 'registrar', false],
     ['GET', '~^/api/invoices$~', FacturaController::class, 'index', false],

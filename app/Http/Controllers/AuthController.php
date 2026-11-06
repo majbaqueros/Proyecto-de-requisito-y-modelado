@@ -72,7 +72,7 @@ final class AuthController extends BaseController {
         $profileId = null;
         if ($this->user && $this->user['role'] === 'paciente') { $profileId = $this->patientId($this->db, $this->user['id']); }
         if ($this->user && $this->user['role'] === 'medico') { $profileId = $this->doctorId($this->db, $this->user['id']); }
-        Http::json(['user' => $this->user, 'csrf' => Auth::token(), 'profile_id' => $profileId]);
+        Http::json(['user' => $this->user, 'csrf' => Auth::token(), 'profile_id' => $profileId, 'google_enabled' => \App\Services\GoogleOidc::configured()]);
     
     }
     public function register(array $params = []): void {
