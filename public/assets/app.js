@@ -1,7 +1,7 @@
 'use strict';
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
-const state = { user:null, csrf:null, profileId:null, role:'paciente', view:'dashboard', busy:false, unread:0, filter:'', filterStatus:'todos' };
+const state = { user:null, csrf:null, profileId:null, googleEnabled:false, role:'paciente', view:'dashboard', busy:false, unread:0, filter:'', filterStatus:'todos' };
 const themeKey='saludcita-theme';
 try { document.documentElement.dataset.theme=localStorage.getItem(themeKey)==='dark'?'dark':'light'; } catch { document.documentElement.dataset.theme='light'; }
 const roles = {
@@ -74,7 +74,7 @@ function flash(text,error=false){toast.textContent=text;toast.className='toast s
 function loginScreen(){
   const role=roles[state.role];
   app.innerHTML=`<div class="login-layout"><aside class="login-art"><div class="brand"><div class="brandmark">✚</div>SaludCita</div><div class="login-copy"><div class="eyebrow">PROYECTO UNIVERSITARIO · SALUD DIGITAL</div><h1>Una mejor forma de cuidar cada cita.</h1><p>Un sistema completo de gestión de citas médicas, con acceso seguro por roles y componentes independientes construidos con principios SOLID.</p><div class="feature"><b>✓</b>Agenda y disponibilidad médica</div><div class="feature"><b>✓</b>Consultas e historias clínicas</div><div class="feature"><b>✓</b>Facturación y notificaciones</div></div><div class="login-foot"><span class="live-dot"></span> Arquitectura modular · Ingeniería de Requisitos · SOLID</div></aside>
-  <main class="login-right"><div class="login-panel"><div class="login-topline"><span class="secure-mark">● SISTEMA CLÍNICO · DEMOSTRACIÓN</span><button type="button" class="mode-toggle" data-theme-toggle aria-label="Cambiar modo de visualización">◐ <span>Modo</span></button></div><div class="eyebrow">ACCESO AL SISTEMA</div><h2>Bienvenido/a</h2><p class="sub">Selecciona tu perfil e inicia sesión para entrar a tu espacio de trabajo.</p><div class="role-choices">${Object.entries(roles).map(([id,r])=>`<button class="role-card ${id===state.role?'active':''}" type="button" data-role="${id}"><span class="ico">${r.emoji}</span><span><strong>${r.label}</strong><small>${r.description}</small></span></button>`).join('')}</div><form data-form="login"><div class="field"><label for="login-email">Correo electrónico</label><input id="login-email" name="email" type="email" placeholder="nombre@clinica.com" autocomplete="username" required></div><div class="field"><label for="login-password">Contraseña</label><input id="login-password" name="password" type="password" placeholder="••••••••" autocomplete="current-password" required><button type="button" class="show-password" data-show-password aria-label="Mostrar u ocultar contraseña">Mostrar</button></div><div class="forgot-row"><button type="button" class="text-link" data-forgot>¿Olvidaste tu contraseña?</button></div><button type="submit" class="primary full">Entrar como ${role.label} →</button></form>${state.role==='paciente'?`<div class="register-prompt">¿Es tu primera vez? <button type="button" class="text-link" data-show-register>Crear cuenta de paciente</button></div>`:''}<div class="login-footnote">Proyecto académico · No introduzcas datos médicos reales.</div></div></main></div>`;
+  <main class="login-right"><div class="login-panel"><div class="login-topline"><span class="secure-mark">● SISTEMA CLÍNICO · DEMOSTRACIÓN</span><button type="button" class="mode-toggle" data-theme-toggle aria-label="Cambiar modo de visualización">◐ <span>Modo</span></button></div><div class="eyebrow">ACCESO AL SISTEMA</div><h2>Bienvenido/a</h2><p class="sub">Selecciona tu perfil e inicia sesión para entrar a tu espacio de trabajo.</p><div class="role-choices">${Object.entries(roles).map(([id,r])=>`<button class="role-card ${id===state.role?'active':''}" type="button" data-role="${id}"><span class="ico">${r.emoji}</span><span><strong>${r.label}</strong><small>${r.description}</small></span></button>`).join('')}</div><form data-form="login"><div class="field"><label for="login-email">Correo electrónico</label><input id="login-email" name="email" type="email" placeholder="nombre@clinica.com" autocomplete="username" required></div><div class="field"><label for="login-password">Contraseña</label><input id="login-password" name="password" type="password" placeholder="••••••••" autocomplete="current-password" required><button type="button" class="show-password" data-show-password aria-label="Mostrar u ocultar contraseña">Mostrar</button></div><div class="forgot-row"><button type="button" class="text-link" data-forgot>¿Olvidaste tu contraseña?</button></div><button type="submit" class="primary full">Entrar como ${role.label} →</button></form>${state.googleEnabled?`<button type="button" class="secondary full google-entry" data-google-login><b>G</b> Continuar con Google</button><small class="google-hint">Primero vincula Google desde tu cuenta de SaludCita.</small>`:''}${state.role==='paciente'?`<div class="register-prompt">¿Es tu primera vez? <button type="button" class="text-link" data-show-register>Crear cuenta de paciente</button></div>`:''}<div class="login-footnote">Proyecto académico · No introduzcas datos médicos reales.</div></div></main></div>`;
 }
 function recoveryScreen(stage='request',email=''){
   history.replaceState({},'','/recuperar-clave');
@@ -113,7 +113,7 @@ async function refreshBell() {
 function shell(){
   const r=roles[state.user.role];
   const nav=navByRole[state.user.role];
-  app.innerHTML=`<div class="layout"><aside class="sidebar"><div class="sidebar-glow"></div><div class="brand"><div class="brandmark">✚</div>SaludCita</div><div class="sidebar-label">ÁREA DE TRABAJO</div><nav class="nav-menu" aria-label="Navegación">${nav.map(k=>`<a href="${pageUrl(state.user.role,k)}" class="nav-link ${k===state.view?'active':''}" ${k===state.view?'aria-current="page"':''} data-view="${k}"><span class="ico">${sections[k][0]}</span>${sections[k][1]}</a>`).join('')}</nav><div class="sidebar-bottom"><div class="avatar">${escapeHtml(state.user.name.charAt(0).toUpperCase())}</div><div><strong>${escapeHtml(state.user.name)}</strong><span>${r.label}</span></div></div><button class="sidebar-logout" data-logout>↪ Cerrar sesión</button></aside><div class="content-wrap"><header class="topbar"><div class="topbar-leading"><span class="topbar-brand-dot"></span><div><span class="hello">PORTAL SALUDCITA · ${r.label.toUpperCase()}</span><br><strong>${escapeHtml(state.user.name)}</strong></div></div><div class="topbar-right"><button type="button" class="quick-search" data-open-search title="Buscar sección (Ctrl+K)">⌕ <span>Buscar sección</span> <kbd>Ctrl K</kbd></button><button type="button" class="mode-toggle" data-theme-toggle aria-label="Cambiar modo de visualización">◐</button><div class="notif-host"><button type="button" class="ghost small bell-button" data-bell title="Notificaciones" aria-label="Abrir notificaciones">🔔 <span id="unread-count" class="unread-count" hidden></span></button><div id="notifier-popover" class="notification-popover" hidden></div></div><span class="role-pill">${r.emoji} ${r.label}</span><button class="ghost small" data-logout title="Salir">Salir ↗</button></div></header><main class="page" id="page"><div class="boot" style="height:50vh"><div class="spinner"></div></div></main></div></div>`;
+  app.innerHTML=`<div class="layout"><aside class="sidebar"><div class="sidebar-glow"></div><div class="brand"><div class="brandmark">✚</div>SaludCita</div><div class="sidebar-label">ÁREA DE TRABAJO</div><nav class="nav-menu" aria-label="Navegación">${nav.map(k=>`<a href="${pageUrl(state.user.role,k)}" class="nav-link ${k===state.view?'active':''}" ${k===state.view?'aria-current="page"':''} data-view="${k}"><span class="ico">${sections[k][0]}</span>${sections[k][1]}</a>`).join('')}</nav><div class="sidebar-bottom"><div class="avatar">${escapeHtml(state.user.name.charAt(0).toUpperCase())}</div><div><strong>${escapeHtml(state.user.name)}</strong><span>${r.label}</span></div></div><button class="sidebar-logout" data-logout>↪ Cerrar sesión</button></aside><div class="content-wrap"><header class="topbar"><div class="topbar-leading"><span class="topbar-brand-dot"></span><div><span class="hello">PORTAL SALUDCITA · ${r.label.toUpperCase()}</span><br><strong>${escapeHtml(state.user.name)}</strong></div></div><div class="topbar-right"><button type="button" class="quick-search" data-open-search title="Buscar sección (Ctrl+K)">⌕ <span>Buscar sección</span> <kbd>Ctrl K</kbd></button><button type="button" class="mode-toggle" data-theme-toggle aria-label="Cambiar modo de visualización">◐</button>${state.googleEnabled?'<button type="button" class="ghost small" data-google-link title="Vincular tu cuenta Google verificada">Vincular Google</button>':''}<div class="notif-host"><button type="button" class="ghost small bell-button" data-bell title="Notificaciones" aria-label="Abrir notificaciones">🔔 <span id="unread-count" class="unread-count" hidden></span></button><div id="notifier-popover" class="notification-popover" hidden></div></div><span class="role-pill">${r.emoji} ${r.label}</span><button class="ghost small" data-logout title="Salir">Salir ↗</button></div></header><main class="page" id="page"><div class="boot" style="height:50vh"><div class="spinner"></div></div></main></div></div>`;
 }
 async function go(view,{fromHistory=false,replace=false}={}){
   if(!state.user || !navByRole[state.user.role].includes(view)) return;
@@ -277,6 +277,17 @@ app.addEventListener('click',async e=>{
   }
   const button=e.target.closest('button');
   if(!button || button.disabled || state.busy)return;
+  if(button.hasAttribute('data-google-login')){
+    if(!Object.prototype.hasOwnProperty.call(roles,state.role))return;
+    location.assign('/api/auth/google/start?role='+encodeURIComponent(state.role));
+    return;
+  }
+  if(button.hasAttribute('data-google-link')){
+    state.busy=true;button.disabled=true;
+    try{const result=await api('/api/auth/google/link',{method:'POST'});location.assign(result.url);}
+    catch(err){flash(err.message,true);button.disabled=false;state.busy=false;}
+    return;
+  }
   if(button.hasAttribute('data-show-password')){const field=document.getElementById('login-password');if(field){field.type=field.type==='password'?'text':'password';button.textContent=field.type==='password'?'Mostrar':'Ocultar';}return;}
   if(button.hasAttribute('data-theme-toggle')){toggleTheme();return;}
   if(button.hasAttribute('data-open-search')){openCommandPalette();return;}
@@ -375,12 +386,19 @@ app.addEventListener('submit',async e=>{
   try{
     const result=await api('/api/auth/me');
     if(result.user){
-      state.user=result.user;state.csrf=result.csrf;state.profileId=result.profile_id;
+      state.user=result.user;state.csrf=result.csrf;state.profileId=result.profile_id;state.googleEnabled=!!result.google_enabled;
       const route=parsePageUrl();
       const allowed=route.valid && route.role===state.user.role && navByRole[state.user.role].includes(route.view);
       await go(allowed?route.view:'dashboard',{replace:!allowed});
     }
-    else{state.csrf=result.csrf;if(location.pathname==='/recuperar-clave')recoveryScreen('request');else loginScreen();}
+    else{state.csrf=result.csrf;state.googleEnabled=!!result.google_enabled;if(location.pathname==='/recuperar-clave')recoveryScreen('request');else loginScreen();}
+    const params=new URLSearchParams(location.search);
+    if(params.has('google_linked')){history.replaceState({},'',location.pathname);flash('Google vinculado. Ya puedes iniciar sesión con Google.');}
+    else if(params.has('google_error')){
+      const messages={cancelado:'Inicio de sesión con Google cancelado o expirado.',sin_vincular:'Inicia sesión con tu contraseña y vincula tu cuenta Google primero.',perfil:'Google está vinculado a otro perfil de SaludCita.',configuracion:'No se pudo completar Google. Revisa la configuración o vinculación de cuentas.'};
+      const message=messages[params.get('google_error')]||messages.configuracion;
+      history.replaceState({},'',location.pathname);flash(message,true);
+    }
   }catch(e){loginScreen();flash(e.message,true);}
 })();
 
