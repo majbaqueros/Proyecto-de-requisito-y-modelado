@@ -10,3 +10,6 @@ CREATE TABLE IF NOT EXISTS oauth_identities (
  UNIQUE(provider, user_id)
 );
 CREATE INDEX IF NOT EXISTS oauth_identities_user_idx ON oauth_identities(user_id);
+DROP TRIGGER IF EXISTS tr_saludcita_audit ON oauth_identities;
+CREATE TRIGGER tr_saludcita_audit AFTER INSERT OR UPDATE OR DELETE ON oauth_identities
+FOR EACH ROW EXECUTE FUNCTION saludcita_audit_trigger();
