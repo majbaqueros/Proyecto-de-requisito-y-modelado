@@ -20,11 +20,13 @@ function prompt(string $label): string {
 }
 function secret(string $label): string {
     fwrite(STDOUT,$label);
-    if (DIRECTORY_SEPARATOR === '/') @shell_exec('stty -echo');
+    $output=[];$status=1;
+    @exec('stty -echo < /dev/tty 2>/dev/null',$output,$status);
+    if ($status !== 0) throw new RuntimeException('No se pudo ocultar la contraseña en esta terminal.');
     try {
         $value=fgets(STDIN);
     } finally {
-        if (DIRECTORY_SEPARATOR === '/') @shell_exec('stty echo');
+        @exec('stty echo < /dev/tty 2>/dev/null');
         fwrite(STDOUT,"\n");
     }
     if($value===false) throw new RuntimeException('Entrada cancelada.');
