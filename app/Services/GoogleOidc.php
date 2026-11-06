@@ -133,6 +133,6 @@ final class GoogleOidc {
         if (strlen($sub) < 2 || strlen($sub) > 255 || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             throw new RuntimeException('Google devolvió un perfil incompleto.');
         }
-        return ['sub'=>$sub, 'email'=>$email, 'name'=>mb_substr($name,0,120)];
+        return ['sub'=>$sub, 'email'=>$email, 'name'=>substr($name,0,120)];
     }
 }
