@@ -59,6 +59,9 @@ BEGIN
   ELSIF TG_TABLE_NAME = 'treatment_plans' THEN
     before_row := before_row - 'title' - 'instructions';
     after_row := after_row - 'title' - 'instructions';
+  ELSIF TG_TABLE_NAME = 'oauth_identities' THEN
+    before_row := before_row - 'provider_sub';
+    after_row := after_row - 'provider_sub';
   END IF;
   record_key := COALESCE(after_row->>'id',before_row->>'id');
   IF TG_TABLE_NAME = 'users' THEN
